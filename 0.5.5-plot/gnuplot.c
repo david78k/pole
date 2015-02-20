@@ -67,9 +67,9 @@ void plot(int col) {
         	fprintf(gp, "\"<(sed -n '1,%dp' %s)\" using ($2 * 2) title 'R'\n", sample_size, fname);
 	// last steps
 	//fprintf(gp, "set xtics %d,180000 nomirror\n", lastlines);
-	//fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%d\" 500)\n", lastlines, lastlines + 100, 
-	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%d\" 470)\n", lastlines, lastlines + 100, 
-				lastlines + 200, lastlines + 300, lastlines + 400, nsteps * 1000);
+	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%dk\" 500)\n", lastlines, lastlines + 100, 
+	//fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%d\" 480)\n", lastlines, lastlines + 100, 
+				lastlines + 200, lastlines + 300, lastlines + 400, nsteps);
 				//lastlines + 200, lastlines + 300, lastlines + 400, lastlines + 500);
         fprintf(gp, "plot \"<(sed -n '%d,%dp' %s)\" using %d title '%s' %s\n", lastlines, nsteps * 1000, fname, col, colstr, type);
 	if(col == 1) 
