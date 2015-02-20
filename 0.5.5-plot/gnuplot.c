@@ -67,11 +67,11 @@ void plot(int col) {
         	fprintf(gp, "\"<(sed -n '1,%dp' %s)\" using ($2 * 2) title 'R'\n", sample_size, fname);
 	// last steps
 	//fprintf(gp, "set xtics %d,180000 nomirror\n", lastlines);
-	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400,\"180000\" 500)\n", lastlines, lastlines + 100, 
-				lastlines + 200, lastlines + 300, lastlines + 400);
-        fprintf(gp, "plot \"<(sed -n '%d,180000p' %s)\" using %d title '%s' %s\n", lastlines, fname, col, colstr, type);
+	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400,\"%d\" 500)\n", lastlines, lastlines + 100, 
+				lastlines + 200, lastlines + 300, lastlines + 400, lastlines + 500);
+        fprintf(gp, "plot \"<(sed -n '%d,%dp' %s)\" using %d title '%s' %s\n", lastlines, nsteps * 1000, fname, col, colstr, type);
 	if(col == 1) 
-        	fprintf(gp, "\"<(sed -n '%d,180000p' %s)\" using ($2 * 2) title 'R'\n", lastlines, fname);
+        	fprintf(gp, "\"<(sed -n '%d,%dp' %s)\" using ($2 * 2) title 'R'\n", lastlines, nsteps * 1000, fname);
 	if(col != 2) printf("%s created\n", output);
 	fprintf(gp, "unset multiplot\n");
 	fprintf(gp, "set xtic auto\n");
