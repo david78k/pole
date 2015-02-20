@@ -100,7 +100,6 @@ int main(int argc, char **argv)
 	// 0 0 0.0113 0.0113 -0.0755 -0.0499 0.9063 0.6871 0.0000
 
 	// L/R for first, last, sampled steps
-/*
 	plot(1);
 	plot(3);
 	plot(4);
@@ -109,7 +108,7 @@ int main(int argc, char **argv)
 	plot(6);
 	plot(7);
 	plot(8);
-*/
+
         fclose(gp);
 
 	return 0;
