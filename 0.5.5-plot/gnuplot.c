@@ -56,13 +56,13 @@ void plot(int col) {
 
 	// all sampled
 	//fprintf(gp, "set xtics (\"1800 (x100)\" 1800)\n", lastlines);
-       	fprintf(gp, "set xr [0:%d]\n", nsteps * 1000);
+       	fprintf(gp, "set xr [0:%d]\n", nsteps * 1000 / sample_period);
 	fprintf(gp, "set xlabel \"(x100)\"\n");
        	fprintf(gp, "plot \"%s\" every %d using %d title '%s' %s\n", fname, sample_period, col, colstr, type);
 	if(col == 1) 
        		fprintf(gp, "\"%s\" every %d using ($2 * 2) title 'R'\n", fname, sample_period);
 	// first steps
-       	fprintf(gp, "unset xr\n");
+       	fprintf(gp, "set autoscale\n");
 	fprintf(gp, "unset xlabel\n");
         fprintf(gp, "plot \"<(sed -n '1,%dp' %s)\" using %d title '%s' %s\n", sample_size, fname, col, colstr, type);
 	if(col == 1) 
