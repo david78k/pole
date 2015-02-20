@@ -10,7 +10,7 @@ sourcefile="${prefix}.test2" # source file
 sample_period=100 # sample every 1, 10, or 100 steps for plotting
 
 sample_size=500 # from first or last
-lastlines=$(( nsteps - sample_size ))
+lastlines=$(( nsteps * 1000 - sample_size ))
 
 ./gnuplot $prefix $sourcefile $sample_period $lastlines
 #./gnuplot $nsteps $prefix $sourcefile $sample_period $lastlines
