@@ -1,0 +1,4 @@
+raspberry:733% git filter-branch --index-filter 'git rm --cached --ignore-unmatch 0.5.5-plot/lime/latest.test'
+Rewrite f61a4a648d67c1aa21e3bebb93df7e3fdc254a3f (5/7)rm '0.5.5-plot/lime/latest.test'
+Rewrite aaca7fbdc5c2a88c3fd6ea86fcdef2601e675e24 (7/7)
+Ref 'refs/heads/master' was rewritten
