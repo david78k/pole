@@ -57,7 +57,7 @@ void plot(int col) {
 	// all sampled
 	//fprintf(gp, "set xtics (\"1800 (x100)\" 1800)\n", lastlines);
        	fprintf(gp, "set xr [0:%d]\n", nsteps * 1000 / sample_period);
-	fprintf(gp, "set xlabel \"(x %d)\"\n", sample_period);
+	fprintf(gp, "set xlabel \"(x%d)\"\n", sample_period);
        	fprintf(gp, "plot \"%s\" every %d using %d title '%s' %s\n", fname, sample_period, col, colstr, type);
 	if(col == 1) 
        		fprintf(gp, "\"%s\" every %d using ($2 * 2) title 'R'\n", fname, sample_period);
