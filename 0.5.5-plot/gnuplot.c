@@ -1,7 +1,8 @@
 /*
-  v0.1 - 2/18/2015 @author Tae Seung Kang 
+  v0.2 - 2/20/2015 @author Tae Seung Kang 
 
   Changelog
+  - nsteps (number of steps) as input argument
   - multiplot
 
   Todo list
@@ -13,11 +14,11 @@
 #define GNUPLOT "gnuplot -persist"
 #define sample_size 500 
 
+int nsteps = 3600; // k (x1000)
 FILE *gp;
-char *prefix = "180k-test1";
-char *fname = "180k-fm200-sup1-sample1-r1.test1";
-//char *fname = "180k-fm200-sup1-sample1-r1.train";
+char *prefix = "180k-test1"; // output file
 //char *prefix = "180k-train";
+char *fname = "180k-fm200-sup1-sample1-r1.test1"; // source file
 int sample_period = 100; // 1, 10, 100
 
 //int sample_size = 500;
@@ -78,6 +79,13 @@ void plot(int col) {
 
 int main(int argc, char **argv)
 {
+	// [prefix] [source_file] [sample_period] [last_lines]
+	// [train|test] [nsteps] [sample_period]
+	prefix = argv[1];
+	fname = argv[2];
+	sample_period = atoi(argv[3]);
+	lastlines = atoi(argv[4]);
+
         gp = popen(GNUPLOT,"w"); /* 'gp' is the pipe descriptor */
         if (gp==NULL)
            {
@@ -92,6 +100,7 @@ int main(int argc, char **argv)
 	// 0 0 0.0113 0.0113 -0.0755 -0.0499 0.9063 0.6871 0.0000
 
 	// L/R for first, last, sampled steps
+/*
 	plot(1);
 	plot(3);
 	plot(4);
@@ -100,7 +109,7 @@ int main(int argc, char **argv)
 	plot(6);
 	plot(7);
 	plot(8);
-
+*/
         fclose(gp);
 
 	return 0;

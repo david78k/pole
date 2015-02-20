@@ -1,0 +1,16 @@
+#!/bin/bash
+
+nsteps=3600  # k (x1000)
+f=3000	# max force
+dt=0.001 # 1ms step size
+
+#prefix="${nsteps}k-test1" # output file
+prefix="${nsteps}k-f$f-dt${dt}-sup1-sample1-r1" # output file same as source file
+sourcefile="${prefix}.test2" # source file
+sample_period=100 # sample every 1, 10, or 100 steps for plotting
+
+sample_size=500 # from first or last
+lastlines=$(( nsteps - sample_size ))
+
+./gnuplot $prefix $sourcefile $sample_period $lastlines
+#./gnuplot $nsteps $prefix $sourcefile $sample_period $lastlines
