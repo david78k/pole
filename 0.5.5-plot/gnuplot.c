@@ -56,20 +56,22 @@ void plot(int col) {
 
 	// all sampled
 	//fprintf(gp, "set xtics (\"1800 (x100)\" 1800)\n", lastlines);
+       	fprintf(gp, "set xr [0:%d]\n", nsteps * 1000);
 	fprintf(gp, "set xlabel \"(x100)\"\n");
        	fprintf(gp, "plot \"%s\" every %d using %d title '%s' %s\n", fname, sample_period, col, colstr, type);
 	if(col == 1) 
        		fprintf(gp, "\"%s\" every %d using ($2 * 2) title 'R'\n", fname, sample_period);
 	// first steps
+       	fprintf(gp, "unset xr\n");
 	fprintf(gp, "unset xlabel\n");
         fprintf(gp, "plot \"<(sed -n '1,%dp' %s)\" using %d title '%s' %s\n", sample_size, fname, col, colstr, type);
 	if(col == 1) 
         	fprintf(gp, "\"<(sed -n '1,%dp' %s)\" using ($2 * 2) title 'R'\n", sample_size, fname);
 	// last steps
 	//fprintf(gp, "set xtics %d,180000 nomirror\n", lastlines);
-	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%dk\" 500)\n", lastlines, lastlines + 100, 
+	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%d\" 500)\n", lastlines, lastlines + 100, 
 	//fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%d\" 480)\n", lastlines, lastlines + 100, 
-				lastlines + 200, lastlines + 300, lastlines + 400, nsteps);
+				lastlines + 200, lastlines + 300, lastlines + 400, nsteps * 1000);
 				//lastlines + 200, lastlines + 300, lastlines + 400, lastlines + 500);
         fprintf(gp, "plot \"<(sed -n '%d,%dp' %s)\" using %d title '%s' %s\n", lastlines, nsteps * 1000, fname, col, colstr, type);
 	if(col == 1) 
