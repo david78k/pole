@@ -8,7 +8,10 @@
 
    Changelog
    - total elapsed time while running
+<<<<<<< HEAD
    - ifdef PRINT
+=======
+>>>>>>> c9b07919d0cd94e10fa5aa644f94c54d0bea8937
    - plot: gnuplot, matplotlib
    - suppress: if fired last time, don't fire. suppress 1 spike
    - add spike error function to remove redundant spikes
@@ -55,10 +58,19 @@
 #include <time.h>
 #include <stdlib.h>
 
+<<<<<<< HEAD
 #define PRINT	  // print out the results
 #define MAX_UNITS 5  /* maximum total number of units (to set array sizes) */
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
+=======
+#define MAX_UNITS 5  /* maximum total number of units (to set array sizes) */
+#define randomdef       ((float) random() / (float)((1 << 31) - 1))
+
+int Graphics = 0;
+int Delay = 20000;
+
+>>>>>>> c9b07919d0cd94e10fa5aa644f94c54d0bea8937
 #define Mc           1.0 	// cart mass
 #define Mp           0.1	// pole mass
 #define l            0.5	// pole half length
@@ -91,8 +103,11 @@ int TARGET_STEPS = 5000;
 int last_steps = 400, max_steps = 0; // global max steps so far
 int rspikes, lspikes;
 
+<<<<<<< HEAD
 //int Graphics = 0; int Delay = 20000;
 
+=======
+>>>>>>> c9b07919d0cd94e10fa5aa644f94c54d0bea8937
 struct
 {
   double           cart_pos;
@@ -532,13 +547,23 @@ Cycle(learn_flag, step, sample_period)
   }
 
   /* report stats */
+<<<<<<< HEAD
 #ifdef PRINT
   if(step % sample_period == 0)
+=======
+  //if(step % sample_period == 0)
+  //if(step % 10 == 0)
+/*
+>>>>>>> c9b07919d0cd94e10fa5aa644f94c54d0bea8937
     fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
 			the_system_state.pole_pos, the_system_state.pole_vel, 
 			the_system_state.cart_pos, the_system_state.cart_vel,
  			push);
+<<<<<<< HEAD
 #endif
+=======
+*/
+>>>>>>> c9b07919d0cd94e10fa5aa644f94c54d0bea8937
   /* modification */
   if (learn_flag)
 	updateweights();
