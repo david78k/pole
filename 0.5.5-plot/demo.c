@@ -7,6 +7,7 @@
    - large variation in firing rates for the given max force fm
 
    Changelog
+   - total elapsed time while running
    - plot: gnuplot, matplotlib
    - suppress: if fired last time, don't fire. suppress 1 spike
    - add spike error function to remove redundant spikes
@@ -164,7 +165,8 @@ main(argc,argv)
 	100.0*success/TEST_RUNS, success, TEST_RUNS, sumTrials/TEST_RUNS, maxTrials, minTrials);
   } else { 
     while(!balanced && i < 1000) {
-      printf("[Run %d] ", ++i);
+      //printf("[Run %d] ", ++i);
+      printf("[%d] ", ++i);
       Run(num_trials, sample_period);
       //init_params(argc,argv);
       init_args(argc,argv);
