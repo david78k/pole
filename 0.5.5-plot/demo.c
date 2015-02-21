@@ -88,7 +88,7 @@ int balanced = 0;
 int DEBUG = 0;
 int TEST_RUNS = 10;
 int TARGET_STEPS = 5000;
-int last_steps = 400;
+int last_steps = 400, max_steps = 0; // global max steps so far
 int rspikes, lspikes;
 
 struct
@@ -126,7 +126,7 @@ main(argc,argv)
 
   setbuf(stdout, NULL);
 
-  // [graphic] [max_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
+  // [graphic] [target_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
   //  1		2		3	4    5     6	7		8    9			10 	   11
   init_args(argc,argv);
 
@@ -164,8 +164,6 @@ main(argc,argv)
 	100.0*success/TEST_RUNS, success, TEST_RUNS, sumTrials/TEST_RUNS, maxTrials, minTrials);
   } else { 
     while(!balanced && i < 1000) {
-      //printf("------- Run %d: %d trials %d target steps -------\n", ++i, num_trials, TARGET_STEPS);
-      //printf("------------- Run %d -------------\n", ++i);
       printf("[Run %d] ", ++i);
       Run(num_trials, sample_period);
       //init_params(argc,argv);
@@ -198,7 +196,7 @@ void init_args(int argc, char *argv[])
 weight-file(or - to init randomly) b bh r rh\n",
 	 argv[0]);
 */
-  // [graphic] [max_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
+  // [graphic] [target_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
   //  1		2		3	4    5     6	7		8    9			10 	   11
   if (argc < 5)
     exit(-1);
@@ -218,7 +216,7 @@ weight-file(or - to init randomly) b bh r rh\n",
   } else {
     SetRandomWeights(); test_flag = 0;
   }
-  //printf("[graphic] [max_steps] [test_runs] [fm] [dt] [tau] [debug] [max_trial] [sample_period] [weights]\n");
+  //printf("[graphic] [target_steps] [test_runs] [fm] [dt] [tau] [debug] [max_trial] [sample_period] [weights]\n");
   //printf("%s %d %d %f %f %f %d %d %d %s\n", argv[1], TARGET_STEPS, TEST_RUNS, fm, dt, tau, DEBUG, atoi(argv[8]), atoi(argv[9]), argv[10]);
 }
 
@@ -364,18 +362,19 @@ int Run(num_trials, sample_period)
     }
    if(i >= num_trials) {
      balanced = 0;
-     printf("Ep %d not balanced. Max %d steps (%.4f hrs). ",
+     //printf("Ep %d not balanced. Max %d steps (%.4f hrs). ",
+     printf("Ep%d: %d steps (%.4f hrs) ",
             i, max_length, (max_length * dt)/3600.0);
             //i + 1, j, (j * dt)/3600.0);
    } else {
-     printf("Ep %d balanced for %d steps (%.4f hrs). ",
+     printf("Ep%d balanced for %d steps (%.4f hrs). ",
             i, j, (j * dt)/3600.0);
      balanced = 1;
    }
 
    time(&stop);
-   //printf("Elapsed time: %d seconds\n", difftime(stop, start));
-   printf("%.0f sec\n", difftime(stop, start));
+   max_steps = (max_steps < j ? j : max_steps);
+   printf("%.0f sec, Max %d steps\n", difftime(stop, start), max_steps);
 
   if(balanced || test_flag) 
   {
