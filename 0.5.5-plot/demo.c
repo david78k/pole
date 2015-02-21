@@ -335,7 +335,6 @@ int Run(num_trials, sample_period)
   while (i < num_trials && j < TARGET_STEPS) /* one hour at .02s per step */
     {
       Cycle(1, j, sample_period);
-      //tdbp();
       if (DEBUG && j % 1000 == 0)
         printf("Episode %d step %d rhat %.4f\n", i, j, r_hat);
       j++;
@@ -366,14 +365,15 @@ int Run(num_trials, sample_period)
      printf("Ep%d: %d steps (%.4f hrs) ",
             i, max_length, (max_length * dt)/3600.0);
             //i + 1, j, (j * dt)/3600.0);
+     max_steps = (max_steps < max_length ? max_length : max_steps);
    } else {
      printf("Ep%d balanced for %d steps (%.4f hrs). ",
             i, j, (j * dt)/3600.0);
      balanced = 1;
+     max_steps = (max_steps < j ? j : max_steps);
    }
 
    time(&stop);
-   max_steps = (max_steps < j ? j : max_steps);
    printf("%.0f sec, Max %d steps\n", difftime(stop, start), max_steps);
 
   if(balanced || test_flag) 
