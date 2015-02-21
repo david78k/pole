@@ -1,11 +1,7 @@
 #!/bin/bash
 
 nsteps=3600  # k (x1000)
-<<<<<<< HEAD
 f=200	# max force
-=======
-f=3000	# max force
->>>>>>> c9b07919d0cd94e10fa5aa644f94c54d0bea8937
 dt=0.001 # 1ms step size
 
 #prefix="${nsteps}k-test1" # output file
