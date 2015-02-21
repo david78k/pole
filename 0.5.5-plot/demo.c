@@ -8,6 +8,7 @@
 
    Changelog
    - total elapsed time while running
+   - ifdef PRINT
    - plot: gnuplot, matplotlib
    - suppress: if fired last time, don't fire. suppress 1 spike
    - add spike error function to remove redundant spikes
@@ -54,11 +55,9 @@
 #include <time.h>
 #include <stdlib.h>
 
+#define PRINT	  // print out the results
 #define MAX_UNITS 5  /* maximum total number of units (to set array sizes) */
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
-
-int Graphics = 0;
-int Delay = 20000;
 
 #define Mc           1.0 	// cart mass
 #define Mp           0.1	// pole mass
@@ -91,6 +90,8 @@ int TEST_RUNS = 10;
 int TARGET_STEPS = 5000;
 int last_steps = 400, max_steps = 0; // global max steps so far
 int rspikes, lspikes;
+
+//int Graphics = 0; int Delay = 20000;
 
 struct
 {
@@ -531,14 +532,13 @@ Cycle(learn_flag, step, sample_period)
   }
 
   /* report stats */
-  //if(step % sample_period == 0)
-  //if(step % 10 == 0)
-/*
+#ifdef PRINT
+  if(step % sample_period == 0)
     fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
 			the_system_state.pole_pos, the_system_state.pole_vel, 
 			the_system_state.cart_pos, the_system_state.cart_vel,
  			push);
-*/
+#endif
   /* modification */
   if (learn_flag)
 	updateweights();
