@@ -55,8 +55,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define PRINT	  // print out the results
-#define MAX_UNITS 5  /* maximum total number of units (to set array sizes) */
+//#define PRINT		  // print out the results
+#define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
 #define Mc           1.0 	// cart mass
