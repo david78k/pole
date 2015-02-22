@@ -159,7 +159,6 @@ main(argc,argv)
       if(trials < minTrials) minTrials = trials;
       if(trials <= 100) success ++;
       init_args(argc,argv);
-      i ++;
     }
     printf("\n=============== SUMMARY ===============\n");
     printf("Trials: %.2f\% (%d/%d) avg %d max %d min %d\n", 
