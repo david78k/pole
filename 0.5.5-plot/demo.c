@@ -119,6 +119,8 @@ void writeweights();
 
 float sign(float x) { return (x < 0) ? -1. : 1.;}
 
+time_t gstart; // global timer
+
 main(argc,argv)
      int argc;
      char *argv[];
@@ -139,30 +141,26 @@ main(argc,argv)
   int sample_period = atoi(argv[10]);
   time_t start, stop, istart, istop;
   //tic
-  time(&start);
+  time(&gstart);
   if(test_flag) {
     int trials, sumTrials = 0, maxTrials = 1, minTrials = 100, success = 0, maxSteps = 0;
     printf("TEST_RUNS = %d\n", TEST_RUNS);
-//  for(i = 0; i < TEST_RUNS; i ++) {
     while(!balanced && i < 100) {
-      //printf("------------- Test Run %d -------------\n", i + 1);
       printf("[Test Run %d] ", ++i);
       datafilename = "latest.test";
-      //sprintf(datafilename, prefix + ".test" + i);
-      if ((datafile = fopen(datafilename,"w")) == NULL) {
-        printf("Couldn't open %s\n",datafilename);
-        return;
-      }
       trials = Run(num_trials, sample_period); // max_trial, sample_period
       sumTrials += trials;
       if(trials > maxTrials) maxTrials = trials;
       if(trials < minTrials) minTrials = trials;
       if(trials <= 100) success ++;
+      if(balanced) break;
       init_args(argc,argv);
     }
     printf("\n=============== SUMMARY ===============\n");
-    printf("Trials: %.2f\% (%d/%d) avg %d max %d min %d\n", 
-	100.0*success/TEST_RUNS, success, TEST_RUNS, sumTrials/TEST_RUNS, maxTrials, minTrials);
+    printf("Trials: %.2f\% (%d/%d) max %d steps\n", 
+	100.0*success/TEST_RUNS, success, TEST_RUNS, max_steps);
+    //printf("Trials: %.2f\% (%d/%d) avg %d max %d min %d\n", 
+//	100.0*success/TEST_RUNS, success, TEST_RUNS, sumTrials/TEST_RUNS, maxTrials, minTrials);
   } else { 
     while(!balanced && i < 1000) {
       //printf("[Run %d] ", ++i);
@@ -175,7 +173,7 @@ main(argc,argv)
 
   // toc
   time(&stop);
-  printf("Total Elapsed time: %.0f seconds\n", difftime(stop, start));
+  printf("Total Elapsed time: %.0f seconds\n", difftime(stop, gstart));
 
   fclose(datafile);
   printf("Wrote current data to %s\n",datafilename);  
@@ -363,26 +361,31 @@ int Run(num_trials, sample_period)
     }
    if(i >= num_trials) {
      balanced = 0;
-     //printf("Ep %d not balanced. Max %d steps (%.4f hrs). ",
-     printf("Ep%d: %d steps (%.4f hrs) ",
-            i, max_length, (max_length * dt)/3600.0);
-            //i + 1, j, (j * dt)/3600.0);
      max_steps = (max_steps < max_length ? max_length : max_steps);
+     //printf("Ep %d not balanced. Max %d steps (%.4f hrs). ",
+     printf("Ep%d: Max %d (%d) steps (%.4f hrs) ",
+            i, max_steps, max_length, (max_length * dt)/3600.0);
    } else {
+     //max_steps = (max_steps < j ? j : max_steps);
      printf("Ep%d balanced for %d steps (%.4f hrs). ",
             i, j, (j * dt)/3600.0);
      balanced = 1;
-     max_steps = (max_steps < j ? j : max_steps);
    }
 
    time(&stop);
-   printf("%.0f sec, Max %d steps\n", difftime(stop, start), max_steps);
+   double tt = j*dt; // total time
+   //printf("%.0f sec\n", difftime(stop, start));
+   //printf("%.0f sec, Max %d steps\n", difftime(stop, start), max_steps);
+   printf("%.2f:%.2f %.0f (%.0f) sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
+   //printf("L:%.2f R:%.2f %.0f sec %.0f sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
+   //printf("L:%.2f R:%.2f lspikes %d rpikes %d\n", lspikes/tt, rspikes/tt, lspikes, rspikes);
 
-  if(balanced || test_flag) 
+  //if(balanced || test_flag) 
+  if(balanced) 
   {
     if(!test_flag) writeweights();
 
-    double tt = j*dt; // total time
+   // double tt = j*dt; // total time
     fprintf(datafile,"\n%.2f spikes/sec (L:%.2f R:%.2f)\n", (lspikes + rspikes)/(tt), lspikes/(tt), rspikes/(tt));
     fprintf(datafile,"%.2f spikes/step (L:%.2f R:%.2f)\n", ((double)(lspikes + rspikes))/(double)j, lspikes/(double)j, rspikes/(double)j);
     fprintf(datafile,"%d spikes (L:%d R:%d), j = %d, dt = %.4f\n", (lspikes + rspikes), lspikes, rspikes, j, dt);

@@ -982,4 +982,22 @@ balanced 0 test_flag 0
 [981] Ep10000: 2088 steps (0.0006 hrs) 14 sec, Max 31458 steps
 [982] Ep10000: 2074 steps (0.0006 hrs) 25 sec, Max 31458 steps
 [983] Ep10000: 1814 steps (0.0005 hrs) 21 sec, Max 31458 steps
-[984] 
+[984] Ep10000: 2261 steps (0.0006 hrs) 26 sec, Max 31458 steps
+[985] Ep10000: 1637 steps (0.0005 hrs) 13 sec, Max 31458 steps
+[986] Ep10000: 2449 steps (0.0007 hrs) 20 sec, Max 31458 steps
+[987] Ep10000: 1585 steps (0.0004 hrs) 13 sec, Max 31458 steps
+[988] Ep10000: 4184 steps (0.0012 hrs) 22 sec, Max 31458 steps
+[989] Ep10000: 2648 steps (0.0007 hrs) 19 sec, Max 31458 steps
+[990] Ep10000: 1543 steps (0.0004 hrs) 15 sec, Max 31458 steps
+[991] Ep10000: 3924 steps (0.0011 hrs) 25 sec, Max 31458 steps
+[992] Ep10000: 1061 steps (0.0003 hrs) 10 sec, Max 31458 steps
+[993] Ep10000: 1824 steps (0.0005 hrs) 20 sec, Max 31458 steps
+[994] Ep10000: 1698 steps (0.0005 hrs) 16 sec, Max 31458 steps
+[995] Ep10000: 4121 steps (0.0011 hrs) 26 sec, Max 31458 steps
+[996] Ep10000: 1559 steps (0.0004 hrs) 13 sec, Max 31458 steps
+[997] Ep10000: 2052 steps (0.0006 hrs) 12 sec, Max 31458 steps
+[998] Ep10000: 2159 steps (0.0006 hrs) 25 sec, Max 31458 steps
+[999] Ep10000: 3721 steps (0.0010 hrs) 19 sec, Max 31458 steps
+[1000] Ep10000: 4677 steps (0.0013 hrs) 28 sec, Max 31458 steps
+Total Elapsed time: 19215 seconds
+Wrote current data to latest.train
