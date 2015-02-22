@@ -482,7 +482,7 @@ Cycle(learn_flag, step, sample_period)
     t = i * dt;
     sum += pushes[step - i] * t * exp(-t/tau);
   }
-  push = Fm*sum;
+  push = fm*sum;
   if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
 #endif
 
