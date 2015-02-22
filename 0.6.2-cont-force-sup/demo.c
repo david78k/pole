@@ -106,7 +106,7 @@ struct
 int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
-double r_hat[2], push, unusualness[2], fired[2], pushes[200];
+double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
 int test_flag = 0;
 
 char *datafilename = "latest.train"; // latest.test1
@@ -475,7 +475,7 @@ Cycle(learn_flag, step, sample_period)
 #ifdef IMPULSE
   push *= fm;
 #else
-  pushes[step] = push;
+  pushes[step] = push; // problematic in accessing index step
   sum = 0.0;
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
@@ -483,7 +483,7 @@ Cycle(learn_flag, step, sample_period)
     sum += pushes[step - i] * t * exp(-t/tau);
   }
   push = fm*sum;
-  if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
+//  if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
 #endif
 
   /* preserve current activities in evaluation network. */
