@@ -1,11 +1,11 @@
 #!/bin/bash
 
 nsteps=3600  # k (x1000)
-f=200	# max force
+f=500	# max force
 dt=0.001 # 1ms step size
 sample_period=1000 # sample every 1, 10, or 100 steps for plotting
 sample_size=500 # from first or last
-extension=test2	# file extension, *.train or *test1 ...
+extension=test4	# file extension, *.train or *test1 ...
 
 #prefix="${nsteps}k-test1" # output file
 prefix="${nsteps}k-f$f-dt${dt}-sup1-sample1-r1" # output file same as source file
