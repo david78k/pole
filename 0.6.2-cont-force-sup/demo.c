@@ -56,7 +56,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-//#defome SUPPRESS
+//#define SUPPRESS
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
