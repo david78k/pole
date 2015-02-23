@@ -12,7 +12,8 @@
 #include <stdlib.h>
 
 #define GNUPLOT "gnuplot -persist"
-#define sample_size 500 
+#define sample_size 1000 
+//#define sample_size 500 
 
 int nsteps = 3600; // k (x1000)
 FILE *gp;
