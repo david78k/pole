@@ -7,12 +7,12 @@
    - large variation in firing rates for the given max force fm
 
    Changelog
+   - suppress flag: if fired last time, don't fire. suppress 1 spike
    - bug found: pushes[step] was missing in integrating force. not working after fix
      added pushes[200] to store up to the last 200 push values
    - total elapsed time while running
    - ifdef PRINT
    - plot: gnuplot, matplotlib
-   - suppress: if fired last time, don't fire. suppress 1 spike
    - add spike error function to remove redundant spikes
    - changed the input arguments to take fm, dt, tau, and last_steps
    - higher force: 10 -> 50 same as cont force. 50 is the best
@@ -56,6 +56,7 @@
 #include <time.h>
 #include <stdlib.h>
 
+//#defome SUPPRESS
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
@@ -368,18 +369,12 @@ int Run(num_trials, sample_period)
 
    time(&stop);
    double tt = j*dt; // total time
-   //printf("%.0f sec\n", difftime(stop, start));
-   //printf("%.0f sec, Max %d steps\n", difftime(stop, start), max_steps);
    printf("%.2f:%.2f %.0f (%.0f) sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
-   //printf("L:%.2f R:%.2f %.0f sec %.0f sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
-   //printf("L:%.2f R:%.2f lspikes %d rpikes %d\n", lspikes/tt, rspikes/tt, lspikes, rspikes);
 
-  //if(balanced || test_flag) 
   if(balanced) 
   {
     if(!test_flag) writeweights();
 
-   // double tt = j*dt; // total time
     fprintf(datafile,"\n%.2f spikes/sec (L:%.2f R:%.2f)\n", (lspikes + rspikes)/(tt), lspikes/(tt), rspikes/(tt));
     fprintf(datafile,"%.2f spikes/step (L:%.2f R:%.2f)\n", ((double)(lspikes + rspikes))/(double)j, lspikes/(double)j, rspikes/(double)j);
     fprintf(datafile,"%d spikes (L:%d R:%d), j = %d, dt = %.4f\n", (lspikes + rspikes), lspikes, rspikes, j, dt);
@@ -445,23 +440,37 @@ Cycle(learn_flag, step, sample_period)
   }
 
   int left = 0, right = 0;
+#ifdef SUPPRESS
   if(fired[0] == 0 && randomdef <= p[0]) {
-  //if(randomdef <= p[0]) {
+#else
+  if(randomdef <= p[0]) {
+#endif
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
+#ifdef SUPPRESS
     fired[0] = 1;
+#endif
   } else {
     unusualness[0] = -p[0];
+#ifdef SUPPRESS
     fired[0] = 0;
+#endif
   }
+#ifdef SUPPRESS
   if(fired[1] == 0 && randomdef <= p[1]) { 
-  //if(randomdef <= p[1]) { 
+#else
+  if(randomdef <= p[1]) { 
+#endif
     right = 1; rspikes ++;
     unusualness[1] = 1 - p[1];
+#ifdef SUPPRESS
     fired[1] = 1;
+#endif
   } else {
     unusualness[1] = -p[1];
+#ifdef SUPPRESS
     fired[1] = 0;
+#endif
   }
 
   if(left == 1 && right == 0) {
