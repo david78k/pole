@@ -57,7 +57,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define SUPPRESS
+//#define SUPPRESS
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
@@ -533,10 +533,15 @@ Cycle(learn_flag, step, sample_period)
     if (start_state)
       r_hat[i] = 0.0;
     else
-      if (failure)
+      if (failure) {
         r_hat[i] = failure - v_old[i];
-      else
+     } else {
         r_hat[i] = failure + Gamma * v[i] - v_old[i];
+     }
+//#ifdef SUPPRESS
+     if(left == 1 && right == 1)
+        r_hat[i] += 1;
+//#endif
   }
 
   /* report stats */

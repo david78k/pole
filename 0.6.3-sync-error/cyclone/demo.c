@@ -1,5 +1,5 @@
 /* 
-   v0.6.2 - 2/22/2015 @author Tae Seung Kang
+   v0.6.3 - 2/24/2015 @author Tae Seung Kang
    Continuous force version
 
    Discussion
@@ -7,6 +7,7 @@
    - large variation in firing rates for the given max force fm
 
    Changelog
+   - sync error added to backprop
    - suppress flag: if fired last time, don't fire. suppress 1 spike
    - bug found: pushes[step] was missing in integrating force. not working after fix
      added pushes[200] to store up to the last 200 push values
@@ -57,6 +58,7 @@
 #include <stdlib.h>
 
 #define SUPPRESS
+#define ASYNC
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
@@ -532,10 +534,15 @@ Cycle(learn_flag, step, sample_period)
     if (start_state)
       r_hat[i] = 0.0;
     else
-      if (failure)
+      if (failure) {
         r_hat[i] = failure - v_old[i];
-      else
+     } else {
         r_hat[i] = failure + Gamma * v[i] - v_old[i];
+     }
+#ifdef ASYNC
+     if(left == 1 && right == 1)
+        r_hat[i] += 0.1;
+#endif
   }
 
   /* report stats */
