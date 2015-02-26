@@ -450,7 +450,7 @@ Cycle(learn_flag, step, sample_period)
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
 #ifdef SUPPRESS
-    fired[0] ++;
+    fired[0] = 1;
 #endif
   } else {
     unusualness[0] = -p[0];
