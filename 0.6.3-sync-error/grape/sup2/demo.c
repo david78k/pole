@@ -57,7 +57,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define SUPPRESS	1000
+#define SUPPRESS
 //#define ASYNC
 //#define IMPULSE	
 //#define PRINT		  // print out the results
@@ -454,17 +454,21 @@ Cycle(learn_flag, step, sample_period)
 #endif
   } else {
     unusualness[0] = -p[0];
+//#ifdef SUPPRESS
+//    fired[0] = -1;
+//#endif
   }
 #ifdef SUPPRESS
   if(fired[0] >= 0) { // activated
 	fired[0] ++; 
-	if(fired[0] >= SUPPRESS) fired[0] = -1; // deactivate
+	if(fired[0] >= 2) fired[0] = -1; // deactivate
+	//if(fired[0] >= 30) fired[0] = -1; // deactivate
   }
 #endif
 
   if(randomdef <= p[1]) { 
 #ifdef SUPPRESS
-    if(fired[0] == -1) { // L is inactive. to prevent synchronization
+    if(fired[0] == -1) { // inactive. to prevent synchronization
 #endif
     right = 1; rspikes ++;
     unusualness[1] = 1 - p[1];
