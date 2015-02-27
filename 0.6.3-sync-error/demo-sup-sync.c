@@ -89,11 +89,12 @@ float state[4] = {0.0, 0.0, 0.0, 0.0};
 float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
 float dt = 0.02;	// 20ms step size
 float tau = 1; 		// 0.5/1.0/2.0 working. 0.1/0.2 not working
+int balanced = 0;
 int DEBUG = 0;
 int TEST_RUNS = 10;
 int TARGET_STEPS = 5000;
 int last_steps = 100, max_steps = 0; // global max steps so far
-int balanced = 0, rspikes, lspikes;
+int rspikes, lspikes;
 
 //int Graphics = 0; int Delay = 20000;
 
@@ -105,7 +106,7 @@ struct
   double           pole_vel;
 } the_system_state;
 
-int start_state, failure, mutex = -1;
+int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
@@ -188,7 +189,7 @@ void init_args(int argc, char *argv[])
   //time_t tloc, time();
   struct timeval current;
 
-  fired[0] = -1; fired[1] = -1; mutex = -1;
+  fired[0] = -1; fired[1] = -1;
   gettimeofday(&current, NULL);
   srandom(current.tv_usec);
 /*
@@ -311,7 +312,7 @@ int Run(num_trials, sample_period)
 {
   register int i, j, avg_length, max_length = 0, lastj, lastlspk, lastrspk;
   time_t start, stop; 
-  lspikes = 0; rspikes = 0; mutex = -1;
+  lspikes = 0; rspikes = 0;
 
   time(&start);
 
@@ -348,7 +349,7 @@ int Run(num_trials, sample_period)
 */	  NextState(1, 0.0);
    	  max_length = (max_length < j ? j : max_length);
 	  lastj = j; lastlspk = lspikes; lastrspk = rspikes;
-	  j = 0; lspikes = 0; rspikes = 0; mutex = -1;
+	  j = 0; lspikes = 0; rspikes = 0;
   	  fclose(datafile);
      	  if ((datafile = fopen(datafilename,"w")) == NULL) {
       	    printf("Couldn't open %s\n",datafilename);
@@ -446,26 +447,21 @@ Cycle(learn_flag, step, sample_period)
   int left = 0, right = 0;
   if(randomdef <= p[0]) {
 #ifdef SUPPRESS
-  	//if(fired[0] == -1) { // inactive
-  	if(mutex == -1) { // available
+  	if(fired[0] == -1) { // inactive
 #endif
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
 #ifdef SUPPRESS
-		mutex = 0; // lock
-		//fired[0] = 0; // activate
+		fired[0] = 0; // activate
 	} 
 #endif
   } else {
     unusualness[0] = -p[0];
   }
 #ifdef SUPPRESS
-  if(mutex >= 0) { // used
-	mutex ++; 
-	if(mutex >= SUPPRESS) mutex = -1; // release
-  //if(fired[0] >= 0) { // activated
-//	fired[0] ++; 
-//	if(fired[0] >= SUPPRESS) fired[0] = -1; // deactivate
+  if(fired[0] >= 0) { // activated
+	fired[0] ++; 
+	if(fired[0] >= SUPPRESS) fired[0] = -1; // deactivate
   }
 #endif
 
@@ -477,20 +473,19 @@ Cycle(learn_flag, step, sample_period)
     right = 1; rspikes ++;
     unusualness[1] = 1 - p[1];
 #ifdef SUPPRESS
- //   	fired[1] = 0; // activate
+    	fired[1] = 0; // activate
     }
 #endif
   } else {
     unusualness[1] = -p[1];
   }
-/*
 #ifdef SUPPRESS
   if(fired[1] >= 0) { // activated
 	fired[1] ++; 
 	if(fired[1] >= SUPPRESS) fired[1] = -1; // deactivate
   }
 #endif
-*/
+
   if(left == 1 && right == 0) {
     push = 1.0; 
   } else if (left == 0 && right == 1) {
@@ -505,8 +500,7 @@ Cycle(learn_flag, step, sample_period)
   pushes[step] = push; // problematic in accessing index step
   sum = 0.0;
 #ifdef SUPPRESS
-  //if(fired[0] >= 0 || fired[1] >= 0) { // activated
-  if(fired[0] >= 0) { // activated
+  if(fired[0] >= 0 || fired[1] >= 0) { // activated
 #endif
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
