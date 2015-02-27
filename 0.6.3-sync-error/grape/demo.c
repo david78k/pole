@@ -57,8 +57,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define SUPPRESS
-#define ASYNC
+#define SUPPRESS	100
+//#define ASYNC
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
@@ -189,7 +189,7 @@ void init_args(int argc, char *argv[])
   //time_t tloc, time();
   struct timeval current;
 
-  fired[0] = 0; fired[1] = 0;
+  fired[0] = -1; fired[1] = -1;
   gettimeofday(&current, NULL);
   srandom(current.tv_usec);
 /*
@@ -310,7 +310,7 @@ SetInputValues()
 int Run(num_trials, sample_period)
  int num_trials, sample_period;
 {
-  register int i, j, avg_length, max_length = 0;
+  register int i, j, avg_length, max_length = 0, lastj, lastlspk, lastrspk;
   time_t start, stop; 
   lspikes = 0; rspikes = 0;
 
@@ -348,6 +348,7 @@ int Run(num_trials, sample_period)
 	    }
 */	  NextState(1, 0.0);
    	  max_length = (max_length < j ? j : max_length);
+	  lastj = j; lastlspk = lspikes; lastrspk = rspikes;
 	  j = 0; lspikes = 0; rspikes = 0;
   	  fclose(datafile);
      	  if ((datafile = fopen(datafilename,"w")) == NULL) {
@@ -370,13 +371,15 @@ int Run(num_trials, sample_period)
    }
 
    time(&stop);
-   double tt = j*dt; // total time
-   printf("%.2f:%.2f %.0f (%.0f) sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
+   double tt = lastj*dt; // total time
+   printf("%.2f:%.2f %.0f (%.0f) sec\n", lastlspk/tt, lastrspk/tt, difftime(stop, gstart), difftime(stop, start));
+   //printf("%.2f:%.2f %.0f (%.0f) sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
 
   if(balanced) 
   {
     if(!test_flag) writeweights();
 
+    tt = j*dt;
     fprintf(datafile,"\n%.2f spikes/sec (L:%.2f R:%.2f)\n", (lspikes + rspikes)/(tt), lspikes/(tt), rspikes/(tt));
     fprintf(datafile,"%.2f spikes/step (L:%.2f R:%.2f)\n", ((double)(lspikes + rspikes))/(double)j, lspikes/(double)j, rspikes/(double)j);
     fprintf(datafile,"%d spikes (L:%d R:%d), j = %d, dt = %.4f\n", (lspikes + rspikes), lspikes, rspikes, j, dt);
@@ -442,36 +445,40 @@ Cycle(learn_flag, step, sample_period)
   }
 
   int left = 0, right = 0;
-#ifdef SUPPRESS
-  if(fired[0] == 0 && randomdef <= p[0]) {
-#else
   if(randomdef <= p[0]) {
+#ifdef SUPPRESS
+  	if(fired[0] == -1) { // inactive
 #endif
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
 #ifdef SUPPRESS
-    fired[0] ++;
+		fired[0] = 0; // activate
+	} 
 #endif
   } else {
     unusualness[0] = -p[0];
-#ifdef SUPPRESS
-    fired[0] = 0;
-#endif
   }
 #ifdef SUPPRESS
-  if(fired[1] == 0 && randomdef <= p[1]) { 
-#else
+  if(fired[0] >= 0) { // activated
+	fired[0] ++; 
+	if(fired[0] >= SUPPRESS) fired[0] = -1; // deactivate
+  }
+#endif
+
   if(randomdef <= p[1]) { 
+#ifdef SUPPRESS
+    if(fired[0] == -1) { // L is inactive. to prevent synchronization
 #endif
     right = 1; rspikes ++;
     unusualness[1] = 1 - p[1];
 #ifdef SUPPRESS
-    fired[1] = 1;
+    //fired[1] = 1;
+    }
 #endif
   } else {
     unusualness[1] = -p[1];
 #ifdef SUPPRESS
-    fired[1] = 0;
+    //fired[1] = 0;
 #endif
   }
 
