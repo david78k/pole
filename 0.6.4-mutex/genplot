@@ -1,0 +1,19 @@
+#!/bin/bash
+
+nsteps=3600  # k (x1000)
+f=500	# max force
+dt=0.001 # 1ms step size
+sample_period=1000 # sample every 1, 10, or 100 steps for plotting
+sample_size=1000 # from first or last
+extension=test4	# file extension, *.train or *test1 ...
+
+#prefix="${nsteps}k-test1" # output file
+prefix="${nsteps}k-f$f-dt${dt}-sup1-sample1-r1" # output file same as source file
+sourcefile="${prefix}.$extension" # source file
+lastlines=$(( nsteps * 1000 - sample_size ))
+
+./gnuplot $prefix $sourcefile $sample_period $lastlines
+#./gnuplot $nsteps $prefix $sourcefile $sample_period $lastlines
+
+mkdir ${prefix}-${extension}
+mv ${prefix}-*.png ${prefix}-${extension}
