@@ -1,5 +1,0 @@
-balanced 0 test_flag 0
-[1] Ep148 balanced for 3600000 steps (1.0000 hrs). 0.00:0.00 1426 (1426) sec
-Wrote current weights to latest.weights
-Total Elapsed time: 1426 seconds
-Wrote current data to latest.train

@@ -498,10 +498,10 @@ Cycle(learn_flag, step, sample_period)
   push *= fm;
 #else
   pushes[step] = push; // problematic in accessing index step
+  sum = 0.0;
 #ifdef SUPPRESS
   if(fired[0] >= 0 || fired[1] >= 0) { // activated
 #endif
-  sum = 0.0;
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
     t = i * dt;

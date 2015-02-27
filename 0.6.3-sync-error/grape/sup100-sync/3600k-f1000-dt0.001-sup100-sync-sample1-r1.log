@@ -1,8 +1,0 @@
-balanced 0 test_flag 0
-[1] Ep10000: Max 1614 (1614) steps (0.0004 hrs) -nan:-nan 54 (54) sec
-[2] Ep10000: Max 2478 (2478) steps (0.0007 hrs) -nan:-nan 152 (98) sec
-[3] Ep10000: Max 2842 (2842) steps (0.0008 hrs) -nan:-nan 228 (76) sec
-[4] Ep59 balanced for 3600000 steps (1.0000 hrs). 0.00:0.00 1774 (1546) sec
-Wrote current weights to latest.weights
-Total Elapsed time: 1774 seconds
-Wrote current data to latest.train
