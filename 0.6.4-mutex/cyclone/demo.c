@@ -7,6 +7,7 @@
    - large variation in firing rates for the given max force fm
 
    Changelog
+   - integrate all the past steps until learn fully
    - mutex for sparse asnychronous fires 
    - sync error added to backprop
    - suppress flag: if fired last time, don't fire. suppress 1 spike
@@ -25,6 +26,7 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - recurrent outputs to affect each other: inhibit weights
    - sync error: how much?
    - test log files: 180k-fm50-r1.test1 .. test100, r1.train, r1.log, r1.weights
    - config file
@@ -547,7 +549,7 @@ if(mutex == -1) {
 }
   /* report stats */
 #ifdef PRINT
-  if(step % sample_period == 0)
+  //if(step % sample_period == 0)
     fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
 			the_system_state.pole_pos, the_system_state.pole_vel, 
 			the_system_state.cart_pos, the_system_state.cart_vel,
