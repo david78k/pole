@@ -7,7 +7,6 @@
    - large variation in firing rates for the given max force fm
 
    Changelog
-   - integrate all the past steps until learn fully
    - mutex for sparse asnychronous fires 
    - sync error added to backprop
    - suppress flag: if fired last time, don't fire. suppress 1 spike
@@ -26,11 +25,12 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
+   - integrate all the past steps until learn fully
    - recurrent outputs to affect each other: inhibit weights
    - sync error: how much?
    - test log files: 180k-fm50-r1.test1 .. test100, r1.train, r1.log, r1.weights
    - config file
-   - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
 */
 /*********************************************************************************
     This file contains a simulation of the cart and pole dynamic system and 
