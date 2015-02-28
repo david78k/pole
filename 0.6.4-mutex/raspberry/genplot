@@ -4,8 +4,8 @@ nsteps=3600  # k (x1000)
 f=10000	# max force
 sup=100 # suppress for mutex
 dt=0.001 # 1ms step size
-sample_period=2000 # sample every 1, 10, or 100 steps for plotting
-sample_size=1000 # from first or last
+sample_period=1000 # sample every 1, 10, or 100 steps for plotting
+sample_size=2000 # from first or last
 extension=test3	# file extension, *.train or *test1 ...
 
 #prefix="${nsteps}k-test1" # output file
