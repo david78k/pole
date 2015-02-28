@@ -1,0 +1,30 @@
+balanced 0 test_flag 0
+[1] Ep10000: Max 1811 (1811) steps (0.0005 hrs) 0.00:0.00 18 (18) sec
+[2] Ep10000: Max 1912 (1912) steps (0.0005 hrs) 0.00:0.00 245 (227) sec
+[3] Ep10000: Max 1912 (150) steps (0.0000 hrs) 11.36:0.00 255 (10) sec
+[4] Ep10000: Max 2260 (2260) steps (0.0006 hrs) 0.00:0.00 297 (42) sec
+[5] Ep10000: Max 2260 (2190) steps (0.0006 hrs) 0.00:0.00 329 (32) sec
+[6] Ep10000: Max 2260 (1270) steps (0.0004 hrs) 19.23:0.00 339 (10) sec
+[7] Ep10000: Max 2260 (264) steps (0.0001 hrs) 25.64:0.00 349 (10) sec
+[8] Ep10000: Max 2260 (304) steps (0.0001 hrs) 10.42:0.00 358 (9) sec
+[9] Ep10000: Max 2260 (982) steps (0.0003 hrs) 27.03:0.00 368 (10) sec
+[10] Ep10000: Max 2260 (251) steps (0.0001 hrs) 1000.00:0.00 377 (9) sec
+[11] Ep10000: Max 2469 (2469) steps (0.0007 hrs) 0.00:47.62 400 (23) sec
+[12] Ep10000: Max 2469 (253) steps (0.0001 hrs) 20.00:0.00 411 (11) sec
+[13] Ep10000: Max 2469 (289) steps (0.0001 hrs) 10.42:0.00 422 (11) sec
+[14] Ep10000: Max 2469 (2229) steps (0.0006 hrs) 0.00:0.00 462 (40) sec
+[15] Ep10000: Max 2469 (524) steps (0.0001 hrs) 8.13:8.13 472 (10) sec
+[16] Ep10000: Max 2469 (306) steps (0.0001 hrs) 16.81:0.00 481 (9) sec
+[17] Ep10000: Max 2469 (531) steps (0.0001 hrs) 23.26:0.00 491 (10) sec
+[18] Ep10000: Max 2469 (510) steps (0.0001 hrs) 0.00:13.33 501 (10) sec
+[19] Ep10000: Max 2469 (288) steps (0.0001 hrs) 0.00:16.95 511 (10) sec
+[20] Ep10000: Max 2469 (687) steps (0.0002 hrs) 21.28:0.00 520 (9) sec
+[21] Ep10000: Max 2469 (391) steps (0.0001 hrs) 11.63:0.00 530 (10) sec
+[22] Ep10000: Max 2469 (150) steps (0.0000 hrs) 11.63:0.00 540 (10) sec
+[23] Ep10000: Max 2469 (1986) steps (0.0006 hrs) 0.00:0.00 588 (48) sec
+[24] Ep10000: Max 2523 (2523) steps (0.0007 hrs) 0.00:0.00 623 (35) sec
+[25] Ep10000: Max 2523 (150) steps (0.0000 hrs) 11.49:0.00 633 (10) sec
+[26] Ep2858 balanced for 3600000 steps (1.0000 hrs). 0.00:125.00 670 (37) sec
+Wrote current weights to latest.weights
+Total Elapsed time: 670 seconds
+Wrote current data to latest.train
