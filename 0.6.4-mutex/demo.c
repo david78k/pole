@@ -113,7 +113,8 @@ double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
 int test_flag = 0;
 
 char *datafilename = "latest.train"; // latest.test1
-FILE *datafile;
+char *best = "best.train", ch;
+FILE *datafile, *bestfile;
 
 /*** Prototypes ***/
 float scale (float v, float vmin, float vmax, int devmin, int devmax);
@@ -152,7 +153,7 @@ main(argc,argv)
     printf("TEST_RUNS = %d\n", TEST_RUNS);
     while(!balanced && i < 100) {
       printf("[Test Run %d] ", ++i);
-      datafilename = "latest.test";
+      datafilename = "latest.test"; best = "best.test";
       trials = Run(num_trials, sample_period); // max_trial, sample_period
       sumTrials += trials;
       if(trials > maxTrials) maxTrials = trials;
@@ -310,7 +311,7 @@ SetInputValues()
 int Run(num_trials, sample_period)
  int num_trials, sample_period;
 {
-  register int i, j, avg_length, max_length = 0, lastj, lastlspk, lastrspk;
+  register int i, j, avg_length, max_length = 0, maxj, maxlspk, maxrspk;
   time_t start, stop; 
   lspikes = 0; rspikes = 0; mutex = -1;
 
@@ -319,10 +320,6 @@ int Run(num_trials, sample_period)
   NextState(1, 0.0);
   i = 0;   j = 0;
   avg_length = 0;
-
-//  if(!test_flag)
-//    printf(" B= %g Bh= %g R= %g Rh= %g nt= %d bin= %d\n",
-//        Beta,Beta_h,Rho,Rho_h,num_trials,sample_period);
 
     if ((datafile = fopen(datafilename,"w")) == NULL) {
       printf("Couldn't open %s\n",datafilename);
@@ -348,7 +345,21 @@ int Run(num_trials, sample_period)
 	    }
 */	  NextState(1, 0.0);
    	  max_length = (max_length < j ? j : max_length);
-	  lastj = j; lastlspk = lspikes; lastrspk = rspikes;
+	  if(max_length < j) {
+	    maxj = j; 
+	    maxlspk = lspikes; maxrspk = rspikes;
+ 	  }
+#ifdef PRINT
+  if(max_steps < j) {
+    if ((bestfile = fopen(best,"w")) == NULL) {
+      printf("Couldn't open %s\n",best);
+      return;
+    }
+    // copy latest.train to best.train
+    while((ch = fgetc(datafile)) != EOF)
+	fputc(ch, bestfile);
+  }
+#endif
 	  j = 0; lspikes = 0; rspikes = 0; mutex = -1;
   	  fclose(datafile);
      	  if ((datafile = fopen(datafilename,"w")) == NULL) {
@@ -360,20 +371,17 @@ int Run(num_trials, sample_period)
    if(i >= num_trials) {
      balanced = 0;
      max_steps = (max_steps < max_length ? max_length : max_steps);
-     //printf("Ep %d not balanced. Max %d steps (%.4f hrs). ",
      printf("Ep%d: Max %d (%d) steps (%.4f hrs) ",
             i, max_steps, max_length, (max_length * dt)/3600.0);
    } else {
-     //max_steps = (max_steps < j ? j : max_steps);
      printf("Ep%d balanced for %d steps (%.4f hrs). ",
             i, j, (j * dt)/3600.0);
      balanced = 1;
    }
 
    time(&stop);
-   double tt = lastj*dt; // total time
-   printf("%.2f:%.2f %.0f (%.0f) sec\n", lastlspk/tt, lastrspk/tt, difftime(stop, gstart), difftime(stop, start));
-   //printf("%.2f:%.2f %.0f (%.0f) sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
+   double tt = maxj*dt; // total time
+   printf("%.2f:%.2f %.0f (%.0f) sec\n", maxlspk/tt, maxrspk/tt, difftime(stop, gstart), difftime(stop, start));
 
   if(balanced) 
   {
@@ -384,6 +392,7 @@ int Run(num_trials, sample_period)
     fprintf(datafile,"%.2f spikes/step (L:%.2f R:%.2f)\n", ((double)(lspikes + rspikes))/(double)j, lspikes/(double)j, rspikes/(double)j);
     fprintf(datafile,"%d spikes (L:%d R:%d), j = %d, dt = %.4f\n", (lspikes + rspikes), lspikes, rspikes, j, dt);
   }
+
   return i + 1;
 }
 
@@ -549,7 +558,7 @@ if(mutex == -1) {
 }
   /* report stats */
 #ifdef PRINT
-  if(step % sample_period == 0)
+//  if(step % sample_period == 0)
     fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
 			the_system_state.pole_pos, the_system_state.pole_vel, 
 			the_system_state.cart_pos, the_system_state.cart_vel,
