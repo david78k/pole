@@ -6,8 +6,8 @@
 
 #max_steps=3600	# k
 max_steps=500	# k
-train=0
-run=1     # 0: not train, 1 or greater: train
+train=1
+run=2     # 0: not train, 1 or greater: train
 testrun=1 # 0: not test, 1 or greater: test
 fm=11000  # max force
 sup=100	# suppress steps
