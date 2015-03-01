@@ -1,12 +1,10 @@
 /* 
-   v0.6.4 - 2/27/2015 @author Tae Seung Kang
+   v0.6.5 - 2/27/2015 @author Tae Seung Kang
    Continuous force version
 
-   Discussion
-   - is cyclone the fastest? others slow due to file IO
-   - large variation in firing rates for the given max force fm
-
    Changelog
+   - change sync error: rhat+=0.1 to rhat-=0.01
+   - print the best results: cp latest.test best.test
    - mutex for sparse asnychronous fires 
    - sync error added to backprop
    - suppress flag: if fired last time, don't fire. suppress 1 spike
@@ -31,6 +29,10 @@
    - sync error: how much?
    - test log files: 180k-fm50-r1.test1 .. test100, r1.train, r1.log, r1.weights
    - config file
+
+   Discussion
+   - is cyclone the fastest? others slow due to file IO
+   - large variation in firing rates for the given max force fm
 */
 /*********************************************************************************
     This file contains a simulation of the cart and pole dynamic system and 
@@ -119,6 +121,8 @@ FILE *datafile, *bestfile;
 /*** Prototypes ***/
 float scale (float v, float vmin, float vmax, int devmin, int devmax);
 void init_args(int argc, char *argv[]);
+void eval();
+void action();
 void updateweights();
 void readweights(char *filename);
 void writeweights();
@@ -419,63 +423,36 @@ Cycle(learn_flag, step, sample_period)
   extern double exp();
   float state[4];
 
-if(mutex == -1) {
+//if(mutex == -1) {
   /* output: state evaluation */
-  for(i = 0; i < 5; i++)
-    {
-      sum = 0.0;
-      for(j = 0; j < 5; j++)
-	{
-	  sum += a[i][j] * x[j];
-	}
-      y[i] = 1.0 / (1.0 + exp(-sum));
-    }
-  for (j = 0; j< 2; j++) {
-    sum = 0.0;
-    for(i = 0; i < 5; i++)
-    {
-      sum += b[i][j] * x[i] + c[i][j] * y[i];
-    }
-    v[j] = sum;
-  }
+  eval();
 
   /* output: action */
-  for(i = 0; i < 5; i++)
-    {
-      sum = 0.0;
-      for (j = 0; j < 5; j++)
-	sum += d[i][j] * x[j];
-      z[i] = 1.0 / (1.0 + exp(-sum));
-    }
-  for (j = 0; j < 2; j++) {
-    sum = 0.0;
-    for(i = 0; i < 5; i++)
-      sum += e[i][j] * x[i] + f[i][j] * z[i];
-    p[j] = 1.0 / (1.0 + exp(-sum));
-  }
+  action();
 
   if(randomdef <= p[0]) {
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
-    mutex = 0; // lock
+//    mutex = 0; // lock
   } else {
     unusualness[0] = -p[0];
   }
 
-  if(mutex == -1) {
+  //if(mutex == -1) {
     if(randomdef <= p[1]) { 
       right = 1; rspikes ++;
       unusualness[1] = 1 - p[1];
-      mutex = 0; // lock
+//      mutex = 0; // lock
     } else {
       unusualness[1] = -p[1];
     }
+/*
   }
 } else { // in use
 	mutex ++; 
 	if(mutex >= SUPPRESS) mutex = -1; // release
 }
-
+*/
   if(left == 1 && right == 0) {
     push = 1.0; 
   } else if (left == 0 && right == 1) {
@@ -489,24 +466,24 @@ if(mutex == -1) {
 #else
   pushes[step] = push; // problematic in accessing index step
   sum = 0.0;
-if(mutex >= 0) {
-    t = mutex*dt;
-    sum += pushes[step - mutex] * t * exp(-t/tau);
-/*
-  if(fired[0] >= 0) { // activated
+//if(mutex >= 0) {
+//    t = mutex*dt;
+//    sum += pushes[step - mutex] * t * exp(-t/tau);
+
+//  if(fired[0] >= 0) { // activated
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
     t = i * dt;
     sum += pushes[step - i] * t * exp(-t/tau);
   }
-  }
-*/
-}
+//  }
+
+//}
   push = fm*sum;
 //  if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
 #endif
 
-if(mutex == -1) {
+//if(mutex == -1) {
   /* preserve current activities in evaluation network. */
   for (i = 0; i< 2; i++)
     v_old[i] = v[i];
@@ -516,12 +493,47 @@ if(mutex == -1) {
     x_old[i] = x[i];
     y_old[i] = y[i];
   }
-}
+//}
   /* Apply the push to the pole-cart */
   NextState(0, push);
 
-if(mutex == -1) {
+//if(mutex == -1) {
   /* Calculate evaluation of new state. */
+  eval();
+
+  /* action evaluation */
+  for(i = 0; i < 2; i++) {
+    if (start_state)
+      r_hat[i] = 0.0;
+    else
+      if (failure) {
+        r_hat[i] = failure - v_old[i];
+     } else {
+        r_hat[i] = failure + Gamma * v[i] - v_old[i];
+     }
+#ifdef ASYNC
+     if(left == 1 && right == 1)
+        r_hat[i] -= 0.01;
+#endif
+  }
+//}
+  /* report stats */
+#ifdef PRINT
+//  if(step % sample_period == 0)
+    fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
+			the_system_state.pole_pos, the_system_state.pole_vel, 
+			the_system_state.cart_pos, the_system_state.cart_vel,
+ 			push);
+#endif
+  /* modification */
+  if (learn_flag && mutex == -1)
+	updateweights();
+}
+
+/**********************************************************************/
+void eval() {
+  int i, j;
+  double sum;
   for(i = 0; i < 5; i++)
     {
       sum = 0.0;
@@ -539,34 +551,24 @@ if(mutex == -1) {
     }
     v[j] = sum;
   }
-
-  /* action evaluation */
-  for(i = 0; i < 2; i++) {
-    if (start_state)
-      r_hat[i] = 0.0;
-    else
-      if (failure) {
-        r_hat[i] = failure - v_old[i];
-     } else {
-        r_hat[i] = failure + Gamma * v[i] - v_old[i];
-     }
-#ifdef ASYNC
-     if(left == 1 && right == 1)
-        r_hat[i] += 0.1;
-#endif
-  }
 }
-  /* report stats */
-#ifdef PRINT
-//  if(step % sample_period == 0)
-    fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
-			the_system_state.pole_pos, the_system_state.pole_vel, 
-			the_system_state.cart_pos, the_system_state.cart_vel,
- 			push);
-#endif
-  /* modification */
-  if (learn_flag && mutex == -1)
-	updateweights();
+
+void action() {
+  int i, j;
+  double sum;
+  for(i = 0; i < 5; i++)
+    {
+      sum = 0.0;
+      for (j = 0; j < 5; j++)
+	sum += d[i][j] * x[j];
+      z[i] = 1.0 / (1.0 + exp(-sum));
+    }
+  for (j = 0; j < 2; j++) {
+    sum = 0.0;
+    for(i = 0; i < 5; i++)
+      sum += e[i][j] * x[i] + f[i][j] * z[i];
+    p[j] = 1.0 / (1.0 + exp(-sum));
+  }
 }
 
 /**********************************************************************/
