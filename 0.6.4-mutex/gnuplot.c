@@ -12,19 +12,20 @@
 #include <stdlib.h>
 
 #define GNUPLOT "gnuplot -persist"
-#define sample_size 1000 
-//#define sample_size 500 
+//#define samplesize 2000 
+//#define samplesize 1000 
 
 int nsteps = 3600; // k (x1000)
-FILE *gp;
+int totalsteps = 3600 * 1000;
 char *prefix = "180k-test1"; // output file
 //char *prefix = "180k-train";
 char *fname = "180k-fm200-sup1-sample1-r1.test1"; // source file
 int sample_period = 100; // 1, 10, 100
 
-//int sample_size = 500;
-int lastlines = 180000 - sample_size;
+int samplesize = 1000;
+int lastlines;
 char output[30];
+FILE *gp;
 
 // sample_loc: first -1, last 0, all 1
 //void plot(int sample_loc, int col) {
@@ -57,7 +58,7 @@ void plot(int col) {
 
 	// all sampled
 	//fprintf(gp, "set xtics (\"1800 (x100)\" 1800)\n", lastlines);
-       	fprintf(gp, "set xr [0:%d]\n", nsteps * 1000 / sample_period);
+       	fprintf(gp, "set xr [0:%d]\n", totalsteps / sample_period);
 	fprintf(gp, "set xlabel \"(x%d)\"\n", sample_period);
        	fprintf(gp, "plot \"%s\" every %d using %d title '%s' %s\n", fname, sample_period, col, colstr, type);
 	if(col == 1) 
@@ -65,18 +66,22 @@ void plot(int col) {
 	// first steps
        	fprintf(gp, "set autoscale x\n");
 	fprintf(gp, "unset xlabel\n");
-        fprintf(gp, "plot \"<(sed -n '1,%dp' %s)\" using %d title '%s' %s\n", sample_size, fname, col, colstr, type);
+        fprintf(gp, "plot \"<(sed -n '1,%dp' %s)\" using %d title '%s' %s\n", samplesize, fname, col, colstr, type);
 	if(col == 1) 
-        	fprintf(gp, "\"<(sed -n '1,%dp' %s)\" using ($2 * 2) title 'R'\n", sample_size, fname);
+        	fprintf(gp, "\"<(sed -n '1,%dp' %s)\" using ($2 * 2) title 'R'\n", samplesize, fname);
 	// last steps
 	//fprintf(gp, "set xtics %d,%d nomirror\n", lastlines, nsteps * 1000);
-	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 200, \"%d\" 400, \"%d\" 600, \"%d\" 800, \"%d\" 1000)\n", lastlines, lastlines + 200, 
-				lastlines + 400, lastlines + 600, lastlines + 800, nsteps * 1000);
+	int onestick = samplesize/5;
+	fprintf(gp, "set xtics (\"%d\" 1, \"%d\" %d, \"%d\" %d, \"%d\" %d, \"%d\" %d, \"%d\" %d)\n", lastlines, 
+				lastlines + onestick, (int)(0.2*samplesize), lastlines + 2*onestick, (int)(0.4*samplesize), 
+				lastlines + 3*onestick, (int)(0.6*samplesize), totalsteps - onestick, (int)(0.8*samplesize), totalsteps, samplesize);
+	//fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 200, \"%d\" 400, \"%d\" 600, \"%d\" 800, \"%d\" 1000)\n", lastlines, lastlines + 200, 
+	//			lastlines + 400, lastlines + 600, lastlines + 800, nsteps * 1000);
 	//fprintf(gp, "set xtics (\"%d\" 1, \"%d\" 100, \"%d\" 200, \"%d\" 300, \"%d\" 400, \"%d\" 500)\n", lastlines, lastlines + 100, 
 	//			lastlines + 200, lastlines + 300, lastlines + 400, nsteps * 1000);
-        fprintf(gp, "plot \"<(sed -n '%d,%dp' %s)\" using %d title '%s' %s\n", lastlines, nsteps * 1000, fname, col, colstr, type);
+        fprintf(gp, "plot \"<(sed -n '%d,%dp' %s)\" using %d title '%s' %s\n", lastlines, totalsteps, fname, col, colstr, type);
 	if(col == 1) 
-        	fprintf(gp, "\"<(sed -n '%d,%dp' %s)\" using ($2 * 2) title 'R'\n", lastlines, nsteps * 1000, fname);
+        	fprintf(gp, "\"<(sed -n '%d,%dp' %s)\" using ($2 * 2) title 'R'\n", lastlines, totalsteps, fname);
 	if(col != 2) printf("%s created\n", output);
 	fprintf(gp, "unset multiplot\n");
 	fprintf(gp, "set xtic auto\n");
@@ -90,6 +95,7 @@ int main(int argc, char **argv)
 	fname = argv[2];
 	sample_period = atoi(argv[3]);
 	lastlines = atoi(argv[4]);
+	samplesize = atoi(argv[5]);
 
         gp = popen(GNUPLOT,"w"); /* 'gp' is the pipe descriptor */
         if (gp==NULL)
