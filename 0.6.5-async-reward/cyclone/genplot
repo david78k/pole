@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#nsteps=3600  # k (x1000)
+nsteps=10  # k (x1000)
+f=100	# max force
+#extension=train	# file extension, *.train or *test1 ...
+extension=test2	# file extension, *.train or *test1 ...
+
+sample_size=1000 # from first or last
+async=0.01 	# async error
+dt=0.001 # 1ms step size
+sample_period=1 # sample every 1, 10, or 100 steps for plotting
+sup=100 # suppress for mutex
+
+#prefix="${nsteps}k-test1" # output file
+prefix="${nsteps}k-f$f-async$async-dt${dt}-sample1-r1" # output file same as source file
+sourcefile="${prefix}.$extension" # source file
+lastlines=$(( nsteps * 1000 - sample_size ))
+
+./gnuplot $prefix $sourcefile $sample_period $lastlines $sample_size $nsteps
+#./gnuplot $nsteps $prefix $sourcefile $sample_period $lastlines
+
+mkdir ${prefix}-${extension}
+mv ${prefix}-*.png ${prefix}-${extension}
