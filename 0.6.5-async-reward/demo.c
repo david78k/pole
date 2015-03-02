@@ -3,6 +3,7 @@
    Continuous force version
 
    Changelog
+   - estimated remaining time
    - change sync error: rhat+=0.1 to rhat-=0.01
    - print the best results: cp latest.test best.test
    - mutex for sparse asnychronous fires 
@@ -369,8 +370,8 @@ int Run(num_trials, sample_period)
    if(i >= num_trials) {
      balanced = 0;
      max_steps = (max_steps < max_length ? max_length : max_steps);
-     printf("Ep%d: Max %d (%d) steps (%.4f hrs) ",
-            i, max_steps, max_length, (max_length * dt)/3600.0);
+     printf("Max %d (%d) steps (%.4f hrs) ",
+            max_steps, max_length, (max_length * dt)/3600.0);
    } else {
      printf("Ep%d balanced for %d steps (%.4f hrs). ",
             i, j, (j * dt)/3600.0);
