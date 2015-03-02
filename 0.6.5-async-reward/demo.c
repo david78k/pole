@@ -61,9 +61,9 @@
 #include <stdlib.h>
 
 #define SUPPRESS	100
-//#define ASYNC
+#define ASYNC
 //#define IMPULSE	
-//#define PRINT		  // print out the results
+#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
@@ -339,15 +339,8 @@ int Run(num_trials, sample_period)
 
       if (failure)
 	{
-//	  avg_length += j;
 	  i++;
-/*	  if (!(i % sample_period))
-	    {
- 	      if(DEBUG) 
-	        printf("Episode%6d %6d\n", i, avg_length / sample_period);
-	      avg_length = 0;
-	    }
-*/	  NextState(1, 0.0);
+	  NextState(1, 0.0);
    	  max_length = (max_length < j ? j : max_length);
 	  if(max_length < j) {
 	    maxj = j; 
@@ -362,6 +355,7 @@ int Run(num_trials, sample_period)
     // copy latest.train to best.train
     while((ch = fgetc(datafile)) != EOF)
 	fputc(ch, bestfile);
+    fclose(bestfile);
   }
 #endif
 	  j = 0; lspikes = 0; rspikes = 0; //mutex = -1;
@@ -505,7 +499,7 @@ Cycle(learn_flag, step, sample_period)
   for(i = 0; i < 2; i++) {
     if (start_state)
       r_hat[i] = 0.0;
-    else
+    else {
       if (failure) {
         r_hat[i] = failure - v_old[i];
      } else {
@@ -515,6 +509,7 @@ Cycle(learn_flag, step, sample_period)
      if(left == 1 && right == 1)
         r_hat[i] -= 0.01;
 #endif
+     }
   }
 //}
   /* report stats */
@@ -606,7 +601,8 @@ char *filename;
 
   if ((file = fopen(filename,"r")) == NULL) {
     printf("Couldn't open %s\n",filename);
-    return;
+      exit(1);
+//    return;
   }
 
   for(i = 0; i < 5; i++)
