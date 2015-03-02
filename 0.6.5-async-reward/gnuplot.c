@@ -15,14 +15,15 @@
 //#define samplesize 2000 
 //#define samplesize 1000 
 
-int nsteps = 3600; // k (x1000)
-int totalsteps = 3600 * 1000;
+//int nsteps = 3600; // k (x1000)
+int totalsteps = 5000;
+//int totalsteps = 3600 * 1000;
 char *prefix = "180k-test1"; // output file
 //char *prefix = "180k-train";
 char *fname = "180k-fm200-sup1-sample1-r1.test1"; // source file
-int sample_period = 100; // 1, 10, 100
+int sample_period = 100; // 1, 10, 100 samples for plotting
 
-int samplesize = 1000;
+int samplesize = 1000;  // first, last sample steps
 int lastlines;
 char output[30];
 FILE *gp;
