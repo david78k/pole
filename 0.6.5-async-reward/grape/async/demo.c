@@ -1,19 +1,18 @@
 /* 
-   v0.6.3 - 2/24/2015 @author Tae Seung Kang
+   v0.6.5 - 2/27/2015 @author Tae Seung Kang
    Continuous force version
 
-   Discussion
-   - is cyclone the fastest? others slow due to file IO
-   - large variation in firing rates for the given max force fm
-
    Changelog
+   - change sync error: rhat+=0.1 to rhat-=0.01
+   - print the best results: cp latest.test best.test
+   - mutex for sparse asnychronous fires 
    - sync error added to backprop
    - suppress flag: if fired last time, don't fire. suppress 1 spike
    - bug found: pushes[step] was missing in integrating force. not working after fix
      added pushes[200] to store up to the last 200 push values
    - total elapsed time while running
    - ifdef PRINT
-   - plot: gnuplot, matplotlib
+   - plot: gnuplot
    - add spike error function to remove redundant spikes
    - changed the input arguments to take fm, dt, tau, and last_steps
    - higher force: 10 -> 50 same as cont force. 50 is the best
@@ -24,12 +23,16 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
-   - take sample write size as argument: sample1, sample10, sample100
-   - try suppress on cyclone f50, f100, f150, f250, f300
+   - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
+   - integrate all the past steps until learn fully
+   - recurrent outputs to affect each other: inhibit weights
+   - sync error: how much?
    - test log files: 180k-fm50-r1.test1 .. test100, r1.train, r1.log, r1.weights
    - config file
-   - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
-   - continuous force
+
+   Discussion
+   - is cyclone the fastest? others slow due to file IO
+   - large variation in firing rates for the given max force fm
 */
 /*********************************************************************************
     This file contains a simulation of the cart and pole dynamic system and 
@@ -58,7 +61,7 @@
 #include <stdlib.h>
 
 #define SUPPRESS	100
-//#define ASYNC
+#define ASYNC
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
@@ -89,12 +92,11 @@ float state[4] = {0.0, 0.0, 0.0, 0.0};
 float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
 float dt = 0.02;	// 20ms step size
 float tau = 1; 		// 0.5/1.0/2.0 working. 0.1/0.2 not working
-int balanced = 0;
 int DEBUG = 0;
 int TEST_RUNS = 10;
 int TARGET_STEPS = 5000;
 int last_steps = 100, max_steps = 0; // global max steps so far
-int rspikes, lspikes;
+int balanced = 0, rspikes, lspikes, mutex = -1;
 
 //int Graphics = 0; int Delay = 20000;
 
@@ -113,11 +115,14 @@ double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
 int test_flag = 0;
 
 char *datafilename = "latest.train"; // latest.test1
-FILE *datafile;
+char *best = "best.train", ch;
+FILE *datafile, *bestfile;
 
 /*** Prototypes ***/
 float scale (float v, float vmin, float vmax, int devmin, int devmax);
 void init_args(int argc, char *argv[]);
+void eval();
+void action();
 void updateweights();
 void readweights(char *filename);
 void writeweights();
@@ -152,7 +157,7 @@ main(argc,argv)
     printf("TEST_RUNS = %d\n", TEST_RUNS);
     while(!balanced && i < 100) {
       printf("[Test Run %d] ", ++i);
-      datafilename = "latest.test";
+      datafilename = "latest.test"; best = "best.test";
       trials = Run(num_trials, sample_period); // max_trial, sample_period
       sumTrials += trials;
       if(trials > maxTrials) maxTrials = trials;
@@ -189,7 +194,7 @@ void init_args(int argc, char *argv[])
   //time_t tloc, time();
   struct timeval current;
 
-  fired[0] = -1; fired[1] = -1;
+  fired[0] = -1; fired[1] = -1; //mutex = -1;
   gettimeofday(&current, NULL);
   srandom(current.tv_usec);
 /*
@@ -310,19 +315,15 @@ SetInputValues()
 int Run(num_trials, sample_period)
  int num_trials, sample_period;
 {
-  register int i, j, avg_length, max_length = 0, lastj, lastlspk, lastrspk;
+  register int i, j, avg_length, max_length = 0, maxj, maxlspk, maxrspk;
   time_t start, stop; 
-  lspikes = 0; rspikes = 0;
+  lspikes = 0; rspikes = 0; //mutex = -1;
 
   time(&start);
 
   NextState(1, 0.0);
   i = 0;   j = 0;
   avg_length = 0;
-
-//  if(!test_flag)
-//    printf(" B= %g Bh= %g R= %g Rh= %g nt= %d bin= %d\n",
-//        Beta,Beta_h,Rho,Rho_h,num_trials,sample_period);
 
     if ((datafile = fopen(datafilename,"w")) == NULL) {
       printf("Couldn't open %s\n",datafilename);
@@ -348,8 +349,22 @@ int Run(num_trials, sample_period)
 	    }
 */	  NextState(1, 0.0);
    	  max_length = (max_length < j ? j : max_length);
-	  lastj = j; lastlspk = lspikes; lastrspk = rspikes;
-	  j = 0; lspikes = 0; rspikes = 0;
+	  if(max_length < j) {
+	    maxj = j; 
+	    maxlspk = lspikes; maxrspk = rspikes;
+ 	  }
+#ifdef PRINT
+  if(max_steps < j) {
+    if ((bestfile = fopen(best,"w")) == NULL) {
+      printf("Couldn't open %s\n",best);
+      return;
+    }
+    // copy latest.train to best.train
+    while((ch = fgetc(datafile)) != EOF)
+	fputc(ch, bestfile);
+  }
+#endif
+	  j = 0; lspikes = 0; rspikes = 0; //mutex = -1;
   	  fclose(datafile);
      	  if ((datafile = fopen(datafilename,"w")) == NULL) {
       	    printf("Couldn't open %s\n",datafilename);
@@ -360,20 +375,17 @@ int Run(num_trials, sample_period)
    if(i >= num_trials) {
      balanced = 0;
      max_steps = (max_steps < max_length ? max_length : max_steps);
-     //printf("Ep %d not balanced. Max %d steps (%.4f hrs). ",
      printf("Ep%d: Max %d (%d) steps (%.4f hrs) ",
             i, max_steps, max_length, (max_length * dt)/3600.0);
    } else {
-     //max_steps = (max_steps < j ? j : max_steps);
      printf("Ep%d balanced for %d steps (%.4f hrs). ",
             i, j, (j * dt)/3600.0);
      balanced = 1;
    }
 
    time(&stop);
-   double tt = lastj*dt; // total time
-   printf("%.2f:%.2f %.0f (%.0f) sec\n", lastlspk/tt, lastrspk/tt, difftime(stop, gstart), difftime(stop, start));
-   //printf("%.2f:%.2f %.0f (%.0f) sec\n", lspikes/tt, rspikes/tt, difftime(stop, gstart), difftime(stop, start));
+   double tt = maxj*dt; // total time
+   printf("%.2f:%.2f %.0f (%.0f) sec\n", maxlspk/tt, maxrspk/tt, difftime(stop, gstart), difftime(stop, start));
 
   if(balanced) 
   {
@@ -384,6 +396,7 @@ int Run(num_trials, sample_period)
     fprintf(datafile,"%.2f spikes/step (L:%.2f R:%.2f)\n", ((double)(lspikes + rspikes))/(double)j, lspikes/(double)j, rspikes/(double)j);
     fprintf(datafile,"%d spikes (L:%d R:%d), j = %d, dt = %.4f\n", (lspikes + rspikes), lspikes, rspikes, j, dt);
   }
+
   return i + 1;
 }
 
@@ -405,87 +418,41 @@ double sgn(x)
 Cycle(learn_flag, step, sample_period)
      int learn_flag, step, sample_period;
 {
-  int i, j, k;
+  int i, j, k, left = 0, right = 0;
   double sum, factor1, factor2, t;
   extern double exp();
   float state[4];
 
+//if(mutex == -1) {
   /* output: state evaluation */
-  for(i = 0; i < 5; i++)
-    {
-      sum = 0.0;
-      for(j = 0; j < 5; j++)
-	{
-	  sum += a[i][j] * x[j];
-	}
-      y[i] = 1.0 / (1.0 + exp(-sum));
-    }
-  for (j = 0; j< 2; j++) {
-    sum = 0.0;
-    for(i = 0; i < 5; i++)
-    {
-      sum += b[i][j] * x[i] + c[i][j] * y[i];
-    }
-    v[j] = sum;
-  }
+  eval();
 
   /* output: action */
-  for(i = 0; i < 5; i++)
-    {
-      sum = 0.0;
-      for (j = 0; j < 5; j++)
-	sum += d[i][j] * x[j];
-      z[i] = 1.0 / (1.0 + exp(-sum));
-    }
-  for (j = 0; j < 2; j++) {
-    sum = 0.0;
-    for(i = 0; i < 5; i++)
-      sum += e[i][j] * x[i] + f[i][j] * z[i];
-    p[j] = 1.0 / (1.0 + exp(-sum));
-  }
+  action();
 
-  int left = 0, right = 0;
   if(randomdef <= p[0]) {
-#ifdef SUPPRESS
-  	if(fired[0] == -1) { // inactive
-#endif
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
-#ifdef SUPPRESS
-		fired[0] = 0; // activate
-	} 
-#endif
+//    mutex = 0; // lock
   } else {
     unusualness[0] = -p[0];
   }
-#ifdef SUPPRESS
-  if(fired[0] >= 0) { // activated
-	fired[0] ++; 
-	if(fired[0] >= SUPPRESS) fired[0] = -1; // deactivate
-  }
-#endif
 
-  if(randomdef <= p[1]) { 
-#ifdef SUPPRESS
-    //if(fired[0] == -1) { // L is inactive. to prevent synchronization
-    if(fired[1] == -1) { // L is inactive. to prevent synchronization
-#endif
-    right = 1; rspikes ++;
-    unusualness[1] = 1 - p[1];
-#ifdef SUPPRESS
-    	fired[1] = 0; // activate
+  //if(mutex == -1) {
+    if(randomdef <= p[1]) { 
+      right = 1; rspikes ++;
+      unusualness[1] = 1 - p[1];
+//      mutex = 0; // lock
+    } else {
+      unusualness[1] = -p[1];
     }
-#endif
-  } else {
-    unusualness[1] = -p[1];
+/*
   }
-#ifdef SUPPRESS
-  if(fired[1] >= 0) { // activated
-	fired[1] ++; 
-	if(fired[1] >= SUPPRESS) fired[1] = -1; // deactivate
-  }
-#endif
-
+} else { // in use
+	mutex ++; 
+	if(mutex >= SUPPRESS) mutex = -1; // release
+}
+*/
   if(left == 1 && right == 0) {
     push = 1.0; 
   } else if (left == 0 && right == 1) {
@@ -499,21 +466,24 @@ Cycle(learn_flag, step, sample_period)
 #else
   pushes[step] = push; // problematic in accessing index step
   sum = 0.0;
-#ifdef SUPPRESS
-  if(fired[0] >= 0 || fired[1] >= 0) { // activated
-#endif
+//if(mutex >= 0) {
+//    t = mutex*dt;
+//    sum += pushes[step - mutex] * t * exp(-t/tau);
+
+//  if(fired[0] >= 0) { // activated
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
     t = i * dt;
     sum += pushes[step - i] * t * exp(-t/tau);
   }
-#ifdef SUPPRESS
-  }
-#endif
+//  }
+
+//}
   push = fm*sum;
 //  if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
 #endif
 
+//if(mutex == -1) {
   /* preserve current activities in evaluation network. */
   for (i = 0; i< 2; i++)
     v_old[i] = v[i];
@@ -523,11 +493,48 @@ Cycle(learn_flag, step, sample_period)
     x_old[i] = x[i];
     y_old[i] = y[i];
   }
-
+//}
   /* Apply the push to the pole-cart */
   NextState(0, push);
 
+//if(mutex == -1) {
   /* Calculate evaluation of new state. */
+  eval();
+
+  /* action evaluation */
+  for(i = 0; i < 2; i++) {
+    if (start_state)
+      r_hat[i] = 0.0;
+    else
+      if (failure) {
+        r_hat[i] = failure - v_old[i];
+     } else {
+        r_hat[i] = failure + Gamma * v[i] - v_old[i];
+     }
+#ifdef ASYNC
+     if(left == 1 && right == 1)
+        r_hat[i] -= 0.01;
+#endif
+  }
+//}
+  /* report stats */
+#ifdef PRINT
+//  if(step % sample_period == 0)
+    fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
+			the_system_state.pole_pos, the_system_state.pole_vel, 
+			the_system_state.cart_pos, the_system_state.cart_vel,
+ 			push);
+#endif
+  /* modification */
+  //if (learn_flag && mutex == -1)
+  if (learn_flag)
+	updateweights();
+}
+
+/**********************************************************************/
+void eval() {
+  int i, j;
+  double sum;
   for(i = 0; i < 5; i++)
     {
       sum = 0.0;
@@ -545,34 +552,24 @@ Cycle(learn_flag, step, sample_period)
     }
     v[j] = sum;
   }
+}
 
-  /* action evaluation */
-  for(i = 0; i < 2; i++) {
-    if (start_state)
-      r_hat[i] = 0.0;
-    else
-      if (failure) {
-        r_hat[i] = failure - v_old[i];
-     } else {
-        r_hat[i] = failure + Gamma * v[i] - v_old[i];
-     }
-#ifdef ASYNC
-     if(left == 1 && right == 1)
-        r_hat[i] += 0.1;
-#endif
+void action() {
+  int i, j;
+  double sum;
+  for(i = 0; i < 5; i++)
+    {
+      sum = 0.0;
+      for (j = 0; j < 5; j++)
+	sum += d[i][j] * x[j];
+      z[i] = 1.0 / (1.0 + exp(-sum));
+    }
+  for (j = 0; j < 2; j++) {
+    sum = 0.0;
+    for(i = 0; i < 5; i++)
+      sum += e[i][j] * x[i] + f[i][j] * z[i];
+    p[j] = 1.0 / (1.0 + exp(-sum));
   }
-
-  /* report stats */
-#ifdef PRINT
-  if(step % sample_period == 0)
-    fprintf(datafile,"%d %d %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n", left, right, r_hat[0], r_hat[1], 
-			the_system_state.pole_pos, the_system_state.pole_vel, 
-			the_system_state.cart_pos, the_system_state.cart_vel,
- 			push);
-#endif
-  /* modification */
-  if (learn_flag)
-	updateweights();
 }
 
 /**********************************************************************/

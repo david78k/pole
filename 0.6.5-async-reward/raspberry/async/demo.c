@@ -1,9 +1,8 @@
 /* 
-   v0.6.6 - 2/27/2015 @author Tae Seung Kang
+   v0.6.5 - 2/27/2015 @author Tae Seung Kang
    Continuous force version
 
    Changelog
-   - force error added to bp: add spike error function to remove redundant spikes
    - change sync error: rhat+=0.1 to rhat-=0.01
    - print the best results: cp latest.test best.test
    - mutex for sparse asnychronous fires 
@@ -11,8 +10,12 @@
    - suppress flag: if fired last time, don't fire. suppress 1 spike
    - bug found: pushes[step] was missing in integrating force. not working after fix
      added pushes[200] to store up to the last 200 push values
-   - ifdef PRINT, gnuplot
+   - total elapsed time while running
+   - ifdef PRINT
+   - plot: gnuplot
+   - add spike error function to remove redundant spikes
    - changed the input arguments to take fm, dt, tau, and last_steps
+   - higher force: 10 -> 50 same as cont force. 50 is the best
    - report stats: firing rates (L/R), rhats (L/R), state (4), force
      writes the data to a file latest.dat
    - 1output with 2actions(L/R) to 2outputs(L/R) with 3actions L/R/0
@@ -23,8 +26,13 @@
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
    - integrate all the past steps until learn fully
    - recurrent outputs to affect each other: inhibit weights
+   - sync error: how much?
    - test log files: 180k-fm50-r1.test1 .. test100, r1.train, r1.log, r1.weights
    - config file
+
+   Discussion
+   - is cyclone the fastest? others slow due to file IO
+   - large variation in firing rates for the given max force fm
 */
 /*********************************************************************************
     This file contains a simulation of the cart and pole dynamic system and 
@@ -53,7 +61,7 @@
 #include <stdlib.h>
 
 #define SUPPRESS	100
-//#define ASYNC
+#define ASYNC
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
@@ -329,9 +337,17 @@ int Run(num_trials, sample_period)
         printf("Episode %d step %d rhat %.4f\n", i, j, r_hat);
       j++;
 
-      if (failure) {
+      if (failure)
+	{
+//	  avg_length += j;
 	  i++;
-	  NextState(1, 0.0);
+/*	  if (!(i % sample_period))
+	    {
+ 	      if(DEBUG) 
+	        printf("Episode%6d %6d\n", i, avg_length / sample_period);
+	      avg_length = 0;
+	    }
+*/	  NextState(1, 0.0);
    	  max_length = (max_length < j ? j : max_length);
 	  if(max_length < j) {
 	    maxj = j; 
@@ -382,6 +398,19 @@ int Run(num_trials, sample_period)
   }
 
   return i + 1;
+}
+
+/****************************************************************/
+
+double sgn(x)
+     double x;
+{
+  if (x < 0.0)
+    return -1.0;
+  else if (x > 0.0)
+    return 1.0;
+  else
+    return 0.0;
 }
 
 /****************************************************************/
@@ -451,6 +480,7 @@ Cycle(learn_flag, step, sample_period)
 
 //}
   push = fm*sum;
+//  if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
 #endif
 
 //if(mutex == -1) {
@@ -483,8 +513,7 @@ Cycle(learn_flag, step, sample_period)
      }
 #ifdef ASYNC
      if(left == 1 && right == 1)
-        r_hat[i] -= 0.01 + sum; // sync error, force error
-        //r_hat[i] -= 0.01; // sync error
+        r_hat[i] -= 0.01;
 #endif
   }
 //}
@@ -541,18 +570,6 @@ void action() {
       sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
   }
-}
-
-/****************************************************************/
-double sgn(x)
-     double x;
-{
-  if (x < 0.0)
-    return -1.0;
-  else if (x > 0.0)
-    return 1.0;
-  else
-    return 0.0;
 }
 
 /**********************************************************************/
@@ -673,4 +690,3 @@ void writeweights()
 
   printf("Wrote current weights to %s\n",filename);
 }
-
