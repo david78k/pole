@@ -1,9 +1,9 @@
 /* 
-   v0.6.5 - 2/27/2015 @author Tae Seung Kang
-   Continuous force version
+   v0.7.0 - 2/27/2015 @author Tae Seung Kang
+   SRM with continuous force version
 
    Changelog
-   - estimated remaining time
+   - Network of Spike Response Model (SRM) neurons: at all layers (input, hidden, output)
    - change sync error: rhat+=0.1 to rhat-=0.01
    - print the best results: cp latest.test best.test
    - mutex for sparse asnychronous fires 
@@ -24,6 +24,7 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - estimated remaining time
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
    - integrate all the past steps until learn fully
    - recurrent outputs to affect each other: inhibit weights
@@ -32,7 +33,8 @@
    - config file
 
    Discussion
-   - is cyclone the fastest? others slow due to file IO
+   - is cyclone the fastest? others slow due to small cache (512k vs 6MB)
+	 (and possibly file IO - cyclone is nfs server)
    - large variation in firing rates for the given max force fm
 */
 /*********************************************************************************
@@ -192,17 +194,11 @@ main(argc,argv)
 void init_args(int argc, char *argv[])
 {
   int runtimes;
-  //time_t tloc, time();
   struct timeval current;
 
   fired[0] = -1; fired[1] = -1; //mutex = -1;
   gettimeofday(&current, NULL);
   srandom(current.tv_usec);
-/*
-  printf("Usage: %s g(raphics) num-trials trials-per-output \
-weight-file(or - to init randomly) b bh r rh\n",
-	 argv[0]);
-*/
   // [graphic] [target_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
   //  1		2		3	4    5     6	7		8    9			10 	   11
   if (argc < 5)
@@ -252,7 +248,6 @@ SetRandomWeights()
 /* If init_flag is zero, then calculate state of cart-pole system at time t+1
    by Euler's method, else set state of cart-pole system to random values.
 */
-
 NextState(init_flag, push)
      int init_flag;
      double push;
@@ -418,7 +413,6 @@ Cycle(learn_flag, step, sample_period)
   extern double exp();
   float state[4];
 
-//if(mutex == -1) {
   /* output: state evaluation */
   eval();
 
@@ -428,26 +422,17 @@ Cycle(learn_flag, step, sample_period)
   if(randomdef <= p[0]) {
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
-//    mutex = 0; // lock
   } else {
     unusualness[0] = -p[0];
   }
 
-  //if(mutex == -1) {
     if(randomdef <= p[1]) { 
       right = 1; rspikes ++;
       unusualness[1] = 1 - p[1];
-//      mutex = 0; // lock
     } else {
       unusualness[1] = -p[1];
     }
-/*
-  }
-} else { // in use
-	mutex ++; 
-	if(mutex >= SUPPRESS) mutex = -1; // release
-}
-*/
+
   if(left == 1 && right == 0) {
     push = 1.0; 
   } else if (left == 0 && right == 1) {
@@ -461,24 +446,14 @@ Cycle(learn_flag, step, sample_period)
 #else
   pushes[step] = push; // problematic in accessing index step
   sum = 0.0;
-//if(mutex >= 0) {
-//    t = mutex*dt;
-//    sum += pushes[step - mutex] * t * exp(-t/tau);
-
-//  if(fired[0] >= 0) { // activated
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
     t = i * dt;
     sum += pushes[step - i] * t * exp(-t/tau);
   }
-//  }
-
-//}
   push = fm*sum;
-//  if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
 #endif
 
-//if(mutex == -1) {
   /* preserve current activities in evaluation network. */
   for (i = 0; i< 2; i++)
     v_old[i] = v[i];
@@ -488,11 +463,10 @@ Cycle(learn_flag, step, sample_period)
     x_old[i] = x[i];
     y_old[i] = y[i];
   }
-//}
+
   /* Apply the push to the pole-cart */
   NextState(0, push);
 
-//if(mutex == -1) {
   /* Calculate evaluation of new state. */
   eval();
 
@@ -512,7 +486,6 @@ Cycle(learn_flag, step, sample_period)
 #endif
      }
   }
-//}
   /* report stats */
 #ifdef PRINT
 //  if(step % sample_period == 0)
@@ -522,7 +495,6 @@ Cycle(learn_flag, step, sample_period)
  			push);
 #endif
   /* modification */
-  //if (learn_flag && mutex == -1)
   if (learn_flag)
 	updateweights();
 }
