@@ -61,7 +61,7 @@
 #include <stdlib.h>
 
 #define SUPPRESS	100
-//#define ASYNC
+#define ASYNC
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
