@@ -62,7 +62,7 @@
 #include <stdlib.h>
 
 #define SUPPRESS	100
-#define ASYNC
+#define SYNERR		0.001
 //#define IMPULSE	
 //#define PRINT		  // print out the results
 #define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
@@ -506,9 +506,9 @@ Cycle(learn_flag, step, sample_period)
      } else {
         r_hat[i] = failure + Gamma * v[i] - v_old[i];
      }
-#ifdef ASYNC
+#ifdef SYNERR
      if(left == 1 && right == 1)
-        r_hat[i] -= 0.01;
+        r_hat[i] -= SYNERR;
 #endif
      }
   }
