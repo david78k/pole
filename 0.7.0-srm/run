@@ -5,16 +5,18 @@
 #time ./demo n 400 20 - 0.1 0.05 1 0.5
 
 max_steps=3600	# k
+#max_steps=5	# k
 train=1
 run=1     # 0: not train, 1 or greater: train
 testrun=1 # 0: not test, 1 or greater: test
-fm=500  # max force
+fm=100  # max force
 sup=100	# suppress steps
 dt=0.001  # 1ms step size. 3600k (3.6M) steps (180k * 20)
 sample=1  # sample size for plotting
+synerr=0.001 # sync error when both fire
 
-prefix=${max_steps}k-f$fm-mutex$sup-dt$dt-sample$sample-r$run
-#prefix=${max_steps}k-f$fm-dt$dt-async-sample$sample-r$run
+#prefix=${max_steps}k-f$fm-mutex$sup-dt$dt-sample$sample-r$run
+prefix=${max_steps}k-f$fm-async$synerr-dt$dt-sample$sample-r$run
 #prefix=${max_steps}k-f$fm-dt$dt-sup1-async-sample$sample-r$run
 #prefix=${max_steps}k-f$fm-dt$dt-sup$sup-sample$sample-r$run
 logdir=/cise/homes/tsk/public_html/snn/$HOST

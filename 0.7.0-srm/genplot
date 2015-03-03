@@ -1,15 +1,18 @@
 #!/bin/bash
 
-nsteps=3600  # k (x1000)
-f=10000	# max force
+#nsteps=3600  # k (x1000)
+nsteps=5  # k (x1000)
+f=1000	# max force
 sup=100 # suppress for mutex
 dt=0.001 # 1ms step size
-sample_period=100 # sample every 1, 10, or 100 steps for plotting
-sample_size=2000 # from first or last
-extension=test3	# file extension, *.train or *test1 ...
+sample_period=1 # sample every 1, 10, or 100 steps for plotting
+sample_size=1000 # from first or last
+extension=train	# file extension, *.train or *test1 ...
+#extension=test1	# file extension, *.train or *test1 ...
+async=0.01 	# async error
 
 #prefix="${nsteps}k-test1" # output file
-prefix="${nsteps}k-f$f-mutex$sup-dt${dt}-sample1-r1" # output file same as source file
+prefix="${nsteps}k-f$f-async$async-dt${dt}-sample1-r1" # output file same as source file
 sourcefile="${prefix}.$extension" # source file
 lastlines=$(( nsteps * 1000 - sample_size ))
 

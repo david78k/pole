@@ -1,0 +1,17 @@
+#!/bin/bash
+servers=( coconut cyclone grape lime papaya raspberry )
+
+#rm coconut/*
+#rm cyclone/*
+#rm grape/*
+#rm lime/*
+#rm papaya/*
+#rm raspberry/*
+
+for server in ${servers[@]}; do
+	echo $server
+	rm -rf $server/*
+	cp demo.c run $server/
+	ln -s ../makefile $server/
+	ls -l $server/
+done
