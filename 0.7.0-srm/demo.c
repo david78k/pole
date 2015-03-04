@@ -69,14 +69,14 @@
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
 /* SRM constants */
-// PSP:
-// AMPA (beta 1.0, tau-exc 0.02, tau-inh 0.01)
+// PSP: AMPA for excitatory and GABAA for inhibitory
+// AMPA (beta 1.0, tau_exc 0.02, tau_inh 0.01)
 // NMDA (beta 5.0, tau 0.08)
 // GABAA (beta 1.1, tau-exc 0.02, tau-inh 0.01)
 // GABAB (beta 50, tau 0.1)
-#define	beta
-#define dist	// [1.0, 2.0]
-#define Q	// connection strength randomly chosen from [1.0, 10.0]
+#define	beta		1.0
+#define dist		1.0	// [1.0, 2.0]
+#define Q		1.0	// connection strength randomly chosen from [1.0, 10.0]
 // AHP
 #define R		-1000	// for AHP
 #define gamma		0.0012	// 1.2 msec. for AHP
@@ -137,6 +137,9 @@ void updateweights();
 void readweights(char *filename);
 void writeweights();
 float sign(float x) { return (x < 0) ? -1. : 1.;}
+
+/* SRM */
+double srm();
 
 main(argc,argv)
      int argc;
@@ -423,9 +426,7 @@ Cycle(learn_flag, step, sample_period)
   action();
 
 #ifdef SRM
-  // PSP
-
-  double AHP = R * exp(-t/gamma);
+  srm();
 #else
   if(randomdef <= p[0]) {
     left = 1; lspikes ++;
@@ -504,6 +505,13 @@ Cycle(learn_flag, step, sample_period)
   /* modification */
   if (learn_flag)
 	updateweights();
+}
+
+/**********************************************************************/
+double srm(int t) {
+  double PSPs = Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau);
+  double AHP = R * exp(-t/gamma);
+  return PSPs + AHP;
 }
 
 /**********************************************************************/
