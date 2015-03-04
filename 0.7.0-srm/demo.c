@@ -56,20 +56,32 @@
     Please send questions and comments to anderson@cs.colostate.edu
 *********************************************************************************/
 #include <stdio.h>
-//#include "xg.h"
 #include <math.h>
 #include <sys/types.h>
-//#include <sys/timeb.h>
 #include <time.h>
 #include <stdlib.h>
 
-#define SUPPRESS	100
+#define SRM
 #define SYNERR		0.001
-//#define IMPULSE	
 //#define PRINT		  // print out the results
-#define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
+#define SUPPRESS	100
+//#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
+/* SRM constants */
+// PSP:
+// AMPA (beta 1.0, tau-exc 0.02, tau-inh 0.01)
+// NMDA (beta 5.0, tau 0.08)
+// GABAA (beta 1.1, tau-exc 0.02, tau-inh 0.01)
+// GABAB (beta 50, tau 0.1)
+#define	beta
+#define dist	// [1.0, 2.0]
+#define Q	// connection strength randomly chosen from [1.0, 10.0]
+// AHP
+#define R		-1000	// for AHP
+#define gamma		0.0012	// 1.2 msec. for AHP
+
+/* cart pole constants */
 #define Mc           1.0 	// cart mass
 #define Mp           0.1	// pole mass
 #define l            0.5	// pole half length
@@ -79,29 +91,14 @@
 #define max_pole_pos 0.2094
 #define max_pole_vel 2.01
 
-#define Gamma        0.9
-#define ALPHA	     0.2  /* 1st layer learning rate (typically 1/n) */
-#define BETA	     0.2   /* 2nd layer learning rate (typically 1/num_hidden) */
-#define GAMMA 	     0.9  /* discount-rate parameter (typically 0.9) */
-#define LAMBDA	     0.8 /* trace decay parameter (should be <= gamma) */
-float Beta =  0.2;
-float Beta_h = 0.05;
-float Rho = 1.0;
-float Rho_h = 0.2;
+#define Gamma 	     0.9  /* discount-rate parameter (typically 0.9) */
+float Beta =  0.2;	/* 1st layer learning rate (typically 1/n) */
+float Beta_h = 0.05;	/* 2nd layer learning rate (typically 1/num_hidden) */
+float Rho = 1.0;	/* 1st layer learning rate (typically 1/n) */
+float Rho_h = 0.2;	/* 2nd layer learning rate (typically 1/num_hidden) */
 float LR_IH = 0.7;
 float LR_HO = 0.07;
 float state[4] = {0.0, 0.0, 0.0, 0.0};
-
-float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
-float dt = 0.02;	// 20ms step size
-float tau = 1; 		// 0.5/1.0/2.0 working. 0.1/0.2 not working
-int DEBUG = 0;
-int TEST_RUNS = 10;
-int TARGET_STEPS = 5000;
-int last_steps = 100, max_steps = 0; // global max steps so far
-int balanced = 0, rspikes, lspikes, mutex = -1;
-
-//int Graphics = 0; int Delay = 20000;
 
 struct
 {
@@ -115,8 +112,18 @@ int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
-int test_flag = 0;
 
+/* experimental parameters */
+float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
+float dt = 0.02;	// 20ms step size
+float tau = 1; 		// 0.5/1.0/2.0 working. 0.1/0.2 not working
+int DEBUG = 0;
+int TEST_RUNS = 10;
+int TARGET_STEPS = 5000;
+int last_steps = 100, max_steps = 0; // global max steps so far
+int balanced = 0, rspikes, lspikes, mutex = -1;
+int test_flag = 0;
+time_t gstart; // global timer
 char *datafilename = "latest.train"; // latest.test1
 char *best = "best.train", ch;
 FILE *datafile, *bestfile;
@@ -129,17 +136,13 @@ void action();
 void updateweights();
 void readweights(char *filename);
 void writeweights();
-
 float sign(float x) { return (x < 0) ? -1. : 1.;}
-
-time_t gstart; // global timer
 
 main(argc,argv)
      int argc;
      char *argv[];
 {
   char a;
-//  Xg_context *context;
 
   setbuf(stdout, NULL);
 
@@ -419,6 +422,11 @@ Cycle(learn_flag, step, sample_period)
   /* output: action */
   action();
 
+#ifdef SRM
+  // PSP
+
+  double AHP = R * exp(-t/gamma);
+#else
   if(randomdef <= p[0]) {
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
@@ -429,17 +437,16 @@ Cycle(learn_flag, step, sample_period)
     if(randomdef <= p[1]) { 
       right = 1; rspikes ++;
       unusualness[1] = 1 - p[1];
-    } else {
+    } else 
       unusualness[1] = -p[1];
-    }
+#endif
 
   if(left == 1 && right == 0) {
     push = 1.0; 
   } else if (left == 0 && right == 1) {
     push = -1.0; 
-  } else { 
+  } else  
     push = 0; 
-  }
 
 #ifdef IMPULSE
   push *= fm;
@@ -507,17 +514,13 @@ void eval() {
     {
       sum = 0.0;
       for(j = 0; j < 5; j++)
-	{
 	  sum += a[i][j] * x[j];
-	}
       y[i] = 1.0 / (1.0 + exp(-sum));
     }
   for (j = 0; j< 2; j++) {
     sum = 0.0;
     for(i = 0; i < 5; i++)
-    {
       sum += b[i][j] * x[i] + c[i][j] * y[i];
-    }
     v[j] = sum;
   }
 }
