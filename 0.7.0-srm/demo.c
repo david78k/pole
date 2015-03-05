@@ -75,11 +75,11 @@
 // GABAA (beta 1.1, tau-exc 0.02, tau-inh 0.01)
 // GABAB (beta 50, tau 0.1)
 #define	beta		1.0
-#define dist		1.0	// [1.0, 2.0]
-#define Q		1.0	// connection strength randomly chosen from [1.0, 10.0]
+#define dist		1.5	// [1.0, 2.0] 1.5 for excitatory, 1.0-1.2 for inhibitory
+#define tau_exc		20	// ms
 // AHP
 #define R		-1000	// for AHP
-#define gamma		0.0012	// 1.2 msec. for AHP
+#define gamma		1.2	// 1.2 msec. for AHP
 
 /* cart pole constants */
 #define Mc           1.0 	// cart mass
@@ -100,6 +100,8 @@ float LR_IH = 0.7;
 float LR_HO = 0.07;
 float state[4] = {0.0, 0.0, 0.0, 0.0};
 
+float Q = 1.0;	// [-10, 10]. connection strength randomly chosen from [1.0, 10.0]
+
 struct
 {
   double           cart_pos;
@@ -115,8 +117,8 @@ double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
 
 /* experimental parameters */
 float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
-float dt = 0.02;	// 20ms step size
-float tau = 1; 		// 0.5/1.0/2.0 working. 0.1/0.2 not working
+float dt = 0.001;	// 1ms step size
+float tau = 0.02; 	// 20ms time constant
 int DEBUG = 0;
 int TEST_RUNS = 10;
 int TARGET_STEPS = 5000;
@@ -139,7 +141,7 @@ void writeweights();
 float sign(float x) { return (x < 0) ? -1. : 1.;}
 
 /* SRM */
-double srm();
+double srm(int time, double weight);
 
 main(argc,argv)
      int argc;
@@ -250,7 +252,6 @@ SetRandomWeights()
 }
 
 /****************************************************************/
-
 /* If init_flag is zero, then calculate state of cart-pole system at time t+1
    by Euler's method, else set state of cart-pole system to random values.
 */
@@ -425,9 +426,6 @@ Cycle(learn_flag, step, sample_period)
   /* output: action */
   action();
 
-#ifdef SRM
-  srm();
-#else
   if(randomdef <= p[0]) {
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
@@ -440,7 +438,6 @@ Cycle(learn_flag, step, sample_period)
       unusualness[1] = 1 - p[1];
     } else 
       unusualness[1] = -p[1];
-#endif
 
   if(left == 1 && right == 0) {
     push = 1.0; 
@@ -508,8 +505,8 @@ Cycle(learn_flag, step, sample_period)
 }
 
 /**********************************************************************/
-double srm(int t) {
-  double PSPs = Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau);
+double srm(int t, double Q) {
+  double PSPs = Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
   double AHP = R * exp(-t/gamma);
   return PSPs + AHP;
 }
@@ -547,7 +544,12 @@ void action() {
     sum = 0.0;
     for(i = 0; i < 5; i++)
       sum += e[i][j] * x[i] + f[i][j] * z[i];
+#ifdef SRM
+      //sum += e[i][j] * PSP[i] + f[i][j] * PSP[i];
+    p[j] = srm(1, e[i][j]) + srm(1, f[i][j]);
+#else
     p[j] = 1.0 / (1.0 + exp(-sum));
+#endif
   }
 }
 
