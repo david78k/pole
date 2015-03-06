@@ -547,12 +547,13 @@ void action() {
     }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
-    for(i = 0; i < 5; i++)
 #ifdef SRM
-      sum += srm(1, e[i][j]);
-    p[j] = sum + R * exp(-1/gamma);
-    // t = dt* (step - last_fired_step);
-    //p[j] = sum + R * exp(-t/gamma);
+    t = dt*(step - last_fired_step);
+#endif
+    for(i = 0; i < 5; i++) 
+#ifdef SRM
+      sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+    p[j] = sum + R * exp(-t/gamma);
 #else
       sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
