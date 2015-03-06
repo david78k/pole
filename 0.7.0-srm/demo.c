@@ -142,6 +142,10 @@ float sign(float x) { return (x < 0) ? -1. : 1.;}
 
 /* SRM */
 double srm(int time, double weight);
+//typedef enum {FORCE, PSP, AHP} strategy_t;
+//strategy_t my_strategy = IMMEDIATE;
+double lookup(char *type, double t);
+double put(char *type, double t, double value);
 
 main(argc,argv)
      int argc;
@@ -410,6 +414,15 @@ double sgn(x)
     return 0.0;
 }
 
+double getForce(double t) {
+  double force = lookup("Force", t);
+  if(force == -1) {
+    force = t * exp(-t/tau);
+    put("Force", t, force);
+  }
+  return force;
+}
+
 /****************************************************************/
 
 Cycle(learn_flag, step, sample_period)
@@ -454,7 +467,8 @@ Cycle(learn_flag, step, sample_period)
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
     t = i * dt;
-    sum += pushes[step - i] * t * exp(-t/tau);
+    sum += pushes[step - i] * getForce(t);
+    //sum += pushes[step - i] * t * exp(-t/tau);
   }
   push = fm*sum;
 #endif
@@ -552,7 +566,7 @@ void eval() {
 
 void action(int step) {
   int i, j, k;
-  double sum, t, tk;
+  double sum, t, tk, psp;
   for(i = 0; i < 5; i++)
     {
       sum = 0.0;
@@ -567,13 +581,17 @@ void action(int step) {
 	// last spikes of neuron i at x and z
 	for(k = 0; k < 100; k ++) {
 	  tk = dt*(step - neighbor_last_spike[i][j][k]);
+	  psp = PSP(t);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	  sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	  sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  sum += e[i][j]*10.0/psp;
+	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  sum += e[i][j]*10.0/psp;
 	}
     // for PSPs
     t = dt*(step - last_spike_step[j]);
-    p[j] = sum + R * exp(-t/gamma);
+    //p[j] = sum + R * exp(-t/gamma);
+    p[j] = sum + AHP(t);
 #else
       sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
