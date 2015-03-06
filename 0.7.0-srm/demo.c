@@ -536,8 +536,8 @@ void eval() {
 }
 
 void action() {
-  int i, j;
-  double sum;
+  int i, j, k;
+  double sum, t, tk;
   for(i = 0; i < 5; i++)
     {
       sum = 0.0;
@@ -547,12 +547,17 @@ void action() {
     }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
-#ifdef SRM
-    t = dt*(step - last_fired_step);
-#endif
     for(i = 0; i < 5; i++) 
 #ifdef SRM
-      sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	// last spikes of neuron i
+	for(k = 0; k < num_spikes; k ++) {
+	  tk = dt*(step - neighbor_spike_step[k]);
+	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	}
+    // for PSPs
+    t = dt*(step - last_spike_step[j]);
     p[j] = sum + R * exp(-t/gamma);
 #else
       sum += e[i][j] * x[i] + f[i][j] * z[i];
