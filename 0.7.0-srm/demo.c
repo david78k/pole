@@ -12,8 +12,6 @@
    - bug found: pushes[step] was missing in integrating force. not working after fix
      added pushes[200] to store up to the last 200 push values
    - total elapsed time while running
-   - ifdef PRINT
-   - plot: gnuplot
    - add spike error function to remove redundant spikes
    - changed the input arguments to take fm, dt, tau, and last_steps
    - higher force: 10 -> 50 same as cont force. 50 is the best
@@ -24,6 +22,7 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - lookup table to reduce computation time: <time, force> or <time, membrane potential>  
    - estimated remaining time
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
    - integrate all the past steps until learn fully
@@ -512,11 +511,26 @@ double srm(int t, double Q) {
   return PSPs + AHP;
 }
 
-/*
-double AHP(int t) {
+double PSP(double t) {
+  double psp = 0;
+
+  psp = lookup("PSP", t);
+  if(psp == -1) {
+    psp = (dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+    put("PSP", t, psp); 
+  }
+  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+}
+
+double AHP(double t) {
+  double ahp = lookup("AHP", t);
+  if(ahp == -1) {
+    ahp = R * exp(-t/gamma);
+    put("AHP", t, ahp);
+  }
   return R * exp(-t/gamma);
 }
-*/
+
 /**********************************************************************/
 void eval() {
   int i, j;
