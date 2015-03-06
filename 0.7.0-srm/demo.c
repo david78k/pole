@@ -114,6 +114,7 @@ int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
+double last_spike_step[2], neighbor_last_spike[5][2][100];
 
 /* experimental parameters */
 float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
@@ -134,7 +135,7 @@ FILE *datafile, *bestfile;
 float scale (float v, float vmin, float vmax, int devmin, int devmax);
 void init_args(int argc, char *argv[]);
 void eval();
-void action();
+void action(int step);
 void updateweights();
 void readweights(char *filename);
 void writeweights();
@@ -424,7 +425,7 @@ Cycle(learn_flag, step, sample_period)
   eval();
 
   /* output: action */
-  action();
+  action(step);
 
   if(randomdef <= p[0]) {
     left = 1; lspikes ++;
@@ -535,7 +536,7 @@ void eval() {
   }
 }
 
-void action() {
+void action(int step) {
   int i, j, k;
   double sum, t, tk;
   for(i = 0; i < 5; i++)
@@ -550,8 +551,8 @@ void action() {
     for(i = 0; i < 5; i++) 
 #ifdef SRM
 	// last spikes of neuron i at x and z
-	for(k = 0; k < num_spikes; k ++) {
-	  tk = dt*(step - neighbor_last_spike[i][k]);
+	for(k = 0; k < 100; k ++) {
+	  tk = dt*(step - neighbor_last_spike[i][j][k]);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
