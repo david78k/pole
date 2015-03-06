@@ -511,6 +511,11 @@ double srm(int t, double Q) {
   return PSPs + AHP;
 }
 
+/*
+double AHP(int t) {
+  return R * exp(-t/gamma);
+}
+*/
 /**********************************************************************/
 void eval() {
   int i, j;
@@ -543,11 +548,13 @@ void action() {
   for (j = 0; j < 2; j++) {
     sum = 0.0;
     for(i = 0; i < 5; i++)
-      sum += e[i][j] * x[i] + f[i][j] * z[i];
 #ifdef SRM
-      //sum += e[i][j] * PSP[i] + f[i][j] * PSP[i];
-    p[j] = srm(1, e[i][j]) + srm(1, f[i][j]);
+      sum += srm(1, e[i][j]);
+    p[j] = sum + R * exp(-1/gamma);
+    // t = dt* (step - last_fired_step);
+    //p[j] = sum + R * exp(-t/gamma);
 #else
+      sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
 #endif
   }
