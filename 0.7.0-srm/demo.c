@@ -549,9 +549,9 @@ void action() {
     sum = 0.0;
     for(i = 0; i < 5; i++) 
 #ifdef SRM
-	// last spikes of neuron i
+	// last spikes of neuron i at x and z
 	for(k = 0; k < num_spikes; k ++) {
-	  tk = dt*(step - neighbor_spike_step[k]);
+	  tk = dt*(step - neighbor_last_spike[i][k]);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
