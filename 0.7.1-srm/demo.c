@@ -1,9 +1,10 @@
 /* 
-   v0.7.0 - 2/27/2015 @author Tae Seung Kang
+   v0.7.1 - 2/27/2015 @author Tae Seung Kang
    SRM with continuous force version
 
    Changelog
    - Network of Spike Response Model (SRM) neurons: at all layers (input, hidden, output)
+   - force computation time reduced: 30-50%
    - change sync error: rhat+=0.1 to rhat-=0.01
    - print the best results: cp latest.test best.test
    - mutex for sparse asnychronous fires 
