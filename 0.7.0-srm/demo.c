@@ -113,7 +113,9 @@ int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
-double last_spike_step[2], neighbor_last_spike[5][2][100];
+double last_spike_p[2], last_spike_x[5][200], last_spike_v[5][200], last_spike_z[5][200];
+double PSPValues[200], AHPValues[200];
+float threshold = 0.03;
 
 /* experimental parameters */
 float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
@@ -525,7 +527,17 @@ double srm(int t, double Q) {
   return PSPs + AHP;
 }
 
-double PSP(double t) {
+double lookup(char *type, double step) {
+  double value;
+  if(strcmp(type, "PSP") == 0) {
+    t = dt*(step - last_spike_z[i][k]);
+    return PSPValues[t];
+  } else if (strcmp(type, "AHP")) {
+
+  }
+}
+
+double PSP(int steps) {
   double psp = 0;
 
   psp = lookup("PSP", t);
@@ -580,16 +592,17 @@ void action(int step) {
 #ifdef SRM
 	// last spikes of neuron i at x and z
 	for(k = 0; k < 100; k ++) {
-	  tk = dt*(step - neighbor_last_spike[i][j][k]);
-	  psp = PSP(t);
+	  tk = dt*(step - last_spike_z[i][k]);
+	  psp = PSP(step);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  sum += e[i][j]*10.0/psp;
+	  tk = dt*(step - last_spike_x[i][k]);
 	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  sum += e[i][j]*10.0/psp;
 	}
     // for PSPs
-    t = dt*(step - last_spike_step[j]);
+    t = dt*(step - last_spike_p[j]);
     //p[j] = sum + R * exp(-t/gamma);
     p[j] = sum + AHP(t);
 #else
