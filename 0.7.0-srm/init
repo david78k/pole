@@ -9,9 +9,11 @@ servers=( coconut cyclone grape lime papaya raspberry )
 #rm raspberry/*
 
 for server in ${servers[@]}; do
-	echo $server
+	#echo $server
 	rm -rf $server/*
 	cp demo.c run $server/
 	ln -s ../makefile $server/
-	ls -l $server/
+	#ls -l $server/
 done
+
+echo Initialization done

@@ -60,7 +60,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-#define SRM
+//#define SRM
 #define SYNERR		0.001
 //#define PRINT		  // print out the results
 #define SUPPRESS	100
@@ -149,6 +149,15 @@ double srm(int time, double weight);
 //double lookup(char *type, double t);
 //double put(char *type, double t, double value);
 
+void init_constant_values() {
+  int i = 0;
+  for(;i < 200; i++) {
+    forceValues[i] = -1;
+    PSPValues[i] = -1;
+    AHPValues[i] = -1;
+  }
+}
+
 main(argc,argv)
      int argc;
      char *argv[];
@@ -160,6 +169,7 @@ main(argc,argv)
   // [graphic] [target_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
   //  1		2		3	4    5     6	7		8    9			10 	   11
   init_args(argc,argv);
+  init_constant_values();
 
   printf("balanced %d test_flag %d\n", balanced, test_flag);
 
@@ -417,13 +427,11 @@ double sgn(x)
 }
 
 double getForce(int step) {
-  //double force = lookup("Force", step);
   double force = forceValues[step];
   if(force == -1) {
     double t = dt*step;
     force = t * exp(-t/tau);
     forceValues[step] = force;
-    //put("Force", step, force);
   }
   return force;
 }
@@ -471,7 +479,7 @@ Cycle(learn_flag, step, sample_period)
   sum = 0.0;
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
-    t = i * dt;
+    //t = i * dt;
     sum += pushes[step - i] * getForce(i);
     //sum += pushes[step - i] * t * exp(-t/tau);
   }
@@ -524,24 +532,6 @@ Cycle(learn_flag, step, sample_period)
 }
 
 /**********************************************************************/
-double srm(int t, double Q) {
-  double PSPs = Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-  double AHP = R * exp(-t/gamma);
-  return PSPs + AHP;
-}
-
-/*
-double lookup(char *type, int steps) {
-  double value, t;
-  if(strcmp(type, "PSP") == 0) {
-    //t = dt*(step - last_spike_z[i][k]);
-    t = dt * steps;
-    return PSPValues[steps];
-  } else if (strcmp(type, "AHP")) {
-    //PSPValues[steps] = 
-  }
-}
-*/
 // lookup table from step 0 to 199 to speed up computation
 double PSP(int step) {
   //step %= 200;

@@ -1,9 +1,9 @@
 /* 
-   v0.6.5 - 2/27/2015 @author Tae Seung Kang
-   Continuous force version
+   v0.7.0 - 2/27/2015 @author Tae Seung Kang
+   SRM with continuous force version
 
    Changelog
-   - estimated remaining time
+   - Network of Spike Response Model (SRM) neurons: at all layers (input, hidden, output)
    - change sync error: rhat+=0.1 to rhat-=0.01
    - print the best results: cp latest.test best.test
    - mutex for sparse asnychronous fires 
@@ -12,8 +12,6 @@
    - bug found: pushes[step] was missing in integrating force. not working after fix
      added pushes[200] to store up to the last 200 push values
    - total elapsed time while running
-   - ifdef PRINT
-   - plot: gnuplot
    - add spike error function to remove redundant spikes
    - changed the input arguments to take fm, dt, tau, and last_steps
    - higher force: 10 -> 50 same as cont force. 50 is the best
@@ -24,6 +22,8 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - lookup table to reduce computation time: <time, force> or <time, membrane potential>  
+   - estimated remaining time
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
    - integrate all the past steps until learn fully
    - recurrent outputs to affect each other: inhibit weights
@@ -32,7 +32,8 @@
    - config file
 
    Discussion
-   - is cyclone the fastest? others slow due to file IO
+   - is cyclone the fastest? others slow due to small cache (512k vs 6MB)
+	 (and possibly file IO - cyclone is nfs server)
    - large variation in firing rates for the given max force fm
 */
 /*********************************************************************************
@@ -54,20 +55,32 @@
     Please send questions and comments to anderson@cs.colostate.edu
 *********************************************************************************/
 #include <stdio.h>
-//#include "xg.h"
 #include <math.h>
 #include <sys/types.h>
-//#include <sys/timeb.h>
 #include <time.h>
 #include <stdlib.h>
 
-#define SUPPRESS	100
+//#define SRM
 #define SYNERR		0.001
-//#define IMPULSE	
 //#define PRINT		  // print out the results
-#define MAX_UNITS 	5  /* maximum total number of units (to set array sizes) */
+#define SUPPRESS	100
+//#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
+/* SRM constants */
+// PSP: AMPA for excitatory and GABAA for inhibitory
+// AMPA (beta 1.0, tau_exc 0.02, tau_inh 0.01)
+// NMDA (beta 5.0, tau 0.08)
+// GABAA (beta 1.1, tau-exc 0.02, tau-inh 0.01)
+// GABAB (beta 50, tau 0.1)
+#define	beta		1.0
+#define dist		1.5	// [1.0, 2.0] 1.5 for excitatory, 1.0-1.2 for inhibitory
+#define tau_exc		20	// ms
+// AHP
+#define R		-1000	// for AHP
+#define gamma		1.2	// 1.2 msec. for AHP
+
+/* cart pole constants */
 #define Mc           1.0 	// cart mass
 #define Mp           0.1	// pole mass
 #define l            0.5	// pole half length
@@ -77,29 +90,16 @@
 #define max_pole_pos 0.2094
 #define max_pole_vel 2.01
 
-#define Gamma        0.9
-#define ALPHA	     0.2  /* 1st layer learning rate (typically 1/n) */
-#define BETA	     0.2   /* 2nd layer learning rate (typically 1/num_hidden) */
-#define GAMMA 	     0.9  /* discount-rate parameter (typically 0.9) */
-#define LAMBDA	     0.8 /* trace decay parameter (should be <= gamma) */
-float Beta =  0.2;
-float Beta_h = 0.05;
-float Rho = 1.0;
-float Rho_h = 0.2;
+#define Gamma 	     0.9  /* discount-rate parameter (typically 0.9) */
+float Beta =  0.2;	/* 1st layer learning rate (typically 1/n) */
+float Beta_h = 0.05;	/* 2nd layer learning rate (typically 1/num_hidden) */
+float Rho = 1.0;	/* 1st layer learning rate (typically 1/n) */
+float Rho_h = 0.2;	/* 2nd layer learning rate (typically 1/num_hidden) */
 float LR_IH = 0.7;
 float LR_HO = 0.07;
 float state[4] = {0.0, 0.0, 0.0, 0.0};
 
-float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
-float dt = 0.02;	// 20ms step size
-float tau = 1; 		// 0.5/1.0/2.0 working. 0.1/0.2 not working
-int DEBUG = 0;
-int TEST_RUNS = 10;
-int TARGET_STEPS = 5000;
-int last_steps = 100, max_steps = 0; // global max steps so far
-int balanced = 0, rspikes, lspikes, mutex = -1;
-
-//int Graphics = 0; int Delay = 20000;
+float Q = 1.0;	// [-10, 10]. connection strength randomly chosen from [1.0, 10.0]
 
 struct
 {
@@ -112,9 +112,22 @@ struct
 int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
-double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
-int test_flag = 0;
+double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[200];
+double last_spike_p[2], last_spike_x[5][200], last_spike_v[5][200], last_spike_z[5][200];
+double PSPValues[200], AHPValues[200];
+float threshold = 0.03;
 
+/* experimental parameters */
+float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
+float dt = 0.001;	// 1ms step size
+float tau = 0.02; 	// 20ms time constant
+int DEBUG = 0;
+int TEST_RUNS = 10;
+int TARGET_STEPS = 5000;
+int last_steps = 100, max_steps = 0; // global max steps so far
+int balanced = 0, rspikes, lspikes, mutex = -1;
+int test_flag = 0;
+time_t gstart; // global timer
 char *datafilename = "latest.train"; // latest.test1
 char *best = "best.train", ch;
 FILE *datafile, *bestfile;
@@ -123,27 +136,40 @@ FILE *datafile, *bestfile;
 float scale (float v, float vmin, float vmax, int devmin, int devmax);
 void init_args(int argc, char *argv[]);
 void eval();
-void action();
+void action(int step);
 void updateweights();
 void readweights(char *filename);
 void writeweights();
-
 float sign(float x) { return (x < 0) ? -1. : 1.;}
 
-time_t gstart; // global timer
+/* SRM */
+double srm(int time, double weight);
+//typedef enum {FORCE, PSP, AHP} strategy_t;
+//strategy_t my_strategy = IMMEDIATE;
+//double lookup(char *type, double t);
+//double put(char *type, double t, double value);
+
+void init_constant_values() {
+  int i = 0;
+  for(;i < 200; i++) {
+    forceValues[i] = -1;
+    PSPValues[i] = -1;
+    AHPValues[i] = -1;
+  }
+}
 
 main(argc,argv)
      int argc;
      char *argv[];
 {
   char a;
-//  Xg_context *context;
 
   setbuf(stdout, NULL);
 
   // [graphic] [target_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
   //  1		2		3	4    5     6	7		8    9			10 	   11
   init_args(argc,argv);
+  init_constant_values();
 
   printf("balanced %d test_flag %d\n", balanced, test_flag);
 
@@ -192,17 +218,11 @@ main(argc,argv)
 void init_args(int argc, char *argv[])
 {
   int runtimes;
-  //time_t tloc, time();
   struct timeval current;
 
   fired[0] = -1; fired[1] = -1; //mutex = -1;
   gettimeofday(&current, NULL);
   srandom(current.tv_usec);
-/*
-  printf("Usage: %s g(raphics) num-trials trials-per-output \
-weight-file(or - to init randomly) b bh r rh\n",
-	 argv[0]);
-*/
   // [graphic] [target_steps] [test_runs] [fm] [dt] [tau] [last_steps] [debug] [max_trial] [sample_period] [weights]
   //  1		2		3	4    5     6	7		8    9			10 	   11
   if (argc < 5)
@@ -248,11 +268,9 @@ SetRandomWeights()
 }
 
 /****************************************************************/
-
 /* If init_flag is zero, then calculate state of cart-pole system at time t+1
    by Euler's method, else set state of cart-pole system to random values.
 */
-
 NextState(init_flag, push)
      int init_flag;
      double push;
@@ -408,6 +426,16 @@ double sgn(x)
     return 0.0;
 }
 
+double getForce(int step) {
+  double force = forceValues[step];
+  if(force == -1) {
+    double t = dt*step;
+    force = t * exp(-t/tau);
+    forceValues[step] = force;
+  }
+  return force;
+}
+
 /****************************************************************/
 
 Cycle(learn_flag, step, sample_period)
@@ -418,67 +446,46 @@ Cycle(learn_flag, step, sample_period)
   extern double exp();
   float state[4];
 
-//if(mutex == -1) {
   /* output: state evaluation */
   eval();
 
   /* output: action */
-  action();
+  action(step);
 
   if(randomdef <= p[0]) {
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
-//    mutex = 0; // lock
   } else {
     unusualness[0] = -p[0];
   }
 
-  //if(mutex == -1) {
     if(randomdef <= p[1]) { 
       right = 1; rspikes ++;
       unusualness[1] = 1 - p[1];
-//      mutex = 0; // lock
-    } else {
+    } else 
       unusualness[1] = -p[1];
-    }
-/*
-  }
-} else { // in use
-	mutex ++; 
-	if(mutex >= SUPPRESS) mutex = -1; // release
-}
-*/
+
   if(left == 1 && right == 0) {
     push = 1.0; 
   } else if (left == 0 && right == 1) {
     push = -1.0; 
-  } else { 
+  } else  
     push = 0; 
-  }
 
 #ifdef IMPULSE
   push *= fm;
 #else
   pushes[step] = push; // problematic in accessing index step
   sum = 0.0;
-//if(mutex >= 0) {
-//    t = mutex*dt;
-//    sum += pushes[step - mutex] * t * exp(-t/tau);
-
-//  if(fired[0] >= 0) { // activated
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
-    t = i * dt;
-    sum += pushes[step - i] * t * exp(-t/tau);
+    //t = i * dt;
+    sum += pushes[step - i] * getForce(i);
+    //sum += pushes[step - i] * t * exp(-t/tau);
   }
-//  }
-
-//}
   push = fm*sum;
-//  if (DEBUG) printf("step %d L %d R %d push %f\n", step, left, right, push);
 #endif
 
-//if(mutex == -1) {
   /* preserve current activities in evaluation network. */
   for (i = 0; i< 2; i++)
     v_old[i] = v[i];
@@ -488,11 +495,10 @@ Cycle(learn_flag, step, sample_period)
     x_old[i] = x[i];
     y_old[i] = y[i];
   }
-//}
+
   /* Apply the push to the pole-cart */
   NextState(0, push);
 
-//if(mutex == -1) {
   /* Calculate evaluation of new state. */
   eval();
 
@@ -512,7 +518,6 @@ Cycle(learn_flag, step, sample_period)
 #endif
      }
   }
-//}
   /* report stats */
 #ifdef PRINT
 //  if(step % sample_period == 0)
@@ -522,9 +527,38 @@ Cycle(learn_flag, step, sample_period)
  			push);
 #endif
   /* modification */
-  //if (learn_flag && mutex == -1)
   if (learn_flag)
 	updateweights();
+}
+
+/**********************************************************************/
+// lookup table from step 0 to 199 to speed up computation
+double PSP(int step) {
+  //step %= 200;
+  double psp = PSPValues[step];
+  //psp = lookup("PSP", steps);
+  if(psp == -1) {
+    double t = dt * step;
+    //t = dt*(step - last_spike_z[i][k]);
+    psp = (dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+    //put("PSP", t, psp); 
+    PSPValues[step] = psp;
+  }
+  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+}
+
+double AHP(int step) {
+  //step %= 200;
+  double ahp = AHPValues[step];
+  //double ahp = lookup("AHP", t);
+  if(ahp == -1) {
+    double t = dt * step;
+    ahp = R * exp(-t/gamma);
+    AHPValues[step] = ahp;
+    //put("AHP", t, ahp);
+  }
+  return ahp;
+  //return R * exp(-t/gamma);
 }
 
 /**********************************************************************/
@@ -535,24 +569,20 @@ void eval() {
     {
       sum = 0.0;
       for(j = 0; j < 5; j++)
-	{
 	  sum += a[i][j] * x[j];
-	}
       y[i] = 1.0 / (1.0 + exp(-sum));
     }
   for (j = 0; j< 2; j++) {
     sum = 0.0;
     for(i = 0; i < 5; i++)
-    {
       sum += b[i][j] * x[i] + c[i][j] * y[i];
-    }
     v[j] = sum;
   }
 }
 
-void action() {
-  int i, j;
-  double sum;
+void action(int step) {
+  int i, j, k;
+  double sum, t, tk, psp;
   for(i = 0; i < 5; i++)
     {
       sum = 0.0;
@@ -562,9 +592,27 @@ void action() {
     }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
-    for(i = 0; i < 5; i++)
+    for(i = 0; i < 5; i++) 
+#ifdef SRM
+	// last spikes of neuron i at x and z
+	for(k = 0; k < 100; k ++) {
+	  tk = dt*(step - last_spike_z[i][k]);
+	  psp = PSP(step);
+	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  sum += e[i][j]*10.0/psp;
+	  tk = dt*(step - last_spike_x[i][k]);
+	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+	  sum += e[i][j]*10.0/psp;
+	}
+    // for PSPs
+    t = dt*(step - last_spike_p[j]);
+    //p[j] = sum + R * exp(-t/gamma);
+    p[j] = sum + AHP(t);
+#else
       sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
+#endif
   }
 }
 
