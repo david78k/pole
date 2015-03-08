@@ -461,7 +461,7 @@ Cycle(learn_flag, step, sample_period)
   action(step);
 
 #ifdef SRM
-  if(1.0 <= p[0]) {
+  if(0.1 <= p[0]) {
 #else
   if(randomdef <= p[0]) {
 #endif
@@ -473,7 +473,7 @@ Cycle(learn_flag, step, sample_period)
   }
 
 #ifdef SRM
-  if(1.0 <= p[1]) {
+  if(0.1 <= p[1]) {
 #else
     if(randomdef <= p[1]) { 
 #endif
@@ -608,7 +608,8 @@ void action(int step) {
 	sum += d[i][j] * x[j];
       z[i] = 1.0 / (1.0 + exp(-sum));
 #ifdef SRM
-      if (z[i] >= 1.0) last_spike_z[i][step%200] = 1;
+      if (z[i] >= 0.5) last_spike_z[i][step%200] = step;
+      else last_spike_z[i][step%200] = -1;
 #endif
     }
   for (j = 0; j < 2; j++) {
@@ -618,15 +619,20 @@ void action(int step) {
 	// last spikes of neuron i at x and z
 	for(k = 0; k < 200; k ++) {
 	  //tk = dt*(step - last_spike_z[i][k]);
-	  psp = PSP(step - last_spike_z[i][k]);
+	  if(last_spike_z[i][k] != -1) {
+	    psp = PSP(step - last_spike_z[i][k]);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	  sum += e[i][j]*10.0/psp;
+	    sum += e[i][j]/psp;
+	  }
 	  //tk = dt*(step - last_spike_x[i][k]);
 	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	  psp = PSP(step - last_spike_x[i][k]);
-	  sum += e[i][j]*10.0/psp;
-    	  sum += AHP(step - last_spike_p[j][k]);
+	  if(last_spike_x[i][k] != -1) {
+	    psp = PSP(step - last_spike_x[i][k]);
+	    sum += e[i][j]/psp;
+	  }
+	  if(last_spike_p[j][k] != -1) 
+    	    sum += AHP(step - last_spike_p[j][k]);
 	}
     // for PSPs
     //t = dt*(step - last_spike_p[j]);
