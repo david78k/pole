@@ -114,7 +114,7 @@ int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[200];
-double last_spike_p[2], last_spike_x[5][200], last_spike_v[5][200], last_spike_z[5][200];
+double last_spike_p[2][200], last_spike_x[5][200], last_spike_v[5][200], last_spike_z[5][200];
 double PSPValues[200], AHPValues[200];
 float threshold = 0.03;
 
@@ -151,11 +151,18 @@ double srm(int time, double weight);
 //double put(char *type, double t, double value);
 
 void init_constant_values() {
-  int i = 0;
-  for(;i < 200; i++) {
+  int i, j;
+  for(i = 0;i < 200; i++) {
     forceValues[i] = -1;
     PSPValues[i] = -1;
     AHPValues[i] = -1;
+    last_spike_p[0][i] = -1;
+    last_spike_p[1][i] = -1;
+    for(j = 0; j < 5; j++) {
+      last_spike_x[j][i] = -1;
+      last_spike_v[j][i] = -1;
+      last_spike_z[j][i] = -1;
+    }
   }
 }
 
@@ -460,6 +467,7 @@ Cycle(learn_flag, step, sample_period)
 #endif
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
+    last_spike_p[0][step%200] = 1;
   } else {
     unusualness[0] = -p[0];
   }
@@ -471,6 +479,7 @@ Cycle(learn_flag, step, sample_period)
 #endif
       right = 1; rspikes ++;
       unusualness[1] = 1 - p[1];
+      last_spike_p[1][step%200] = 1;
     } else 
       unusualness[1] = -p[1];
 
@@ -598,6 +607,9 @@ void action(int step) {
       for (j = 0; j < 5; j++)
 	sum += d[i][j] * x[j];
       z[i] = 1.0 / (1.0 + exp(-sum));
+#ifdef SRM
+      if (z[i] >= 1.0) last_spike_z[i][step%200] = 1;
+#endif
     }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
@@ -614,11 +626,13 @@ void action(int step) {
 	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  psp = PSP(step - last_spike_x[i][k]);
 	  sum += e[i][j]*10.0/psp;
+    	  sum += AHP(step - last_spike_p[j][k]);
 	}
     // for PSPs
     //t = dt*(step - last_spike_p[j]);
     //p[j] = sum + R * exp(-t/gamma);
-    p[j] = sum + AHP(step - last_spike_p[j]);
+    p[j] = sum;
+    //p[j] = sum + AHP(step - last_spike_p[j]);
 #else
       sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
