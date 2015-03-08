@@ -112,7 +112,7 @@ struct
 int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
-double r_hat[2], push, unusualness[2], fired[2], pushes[3600000];
+double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[200];
 double last_spike_p[2], last_spike_x[5][200], last_spike_v[5][200], last_spike_z[5][200];
 double PSPValues[200], AHPValues[200];
 float threshold = 0.03;
@@ -146,8 +146,8 @@ float sign(float x) { return (x < 0) ? -1. : 1.;}
 double srm(int time, double weight);
 //typedef enum {FORCE, PSP, AHP} strategy_t;
 //strategy_t my_strategy = IMMEDIATE;
-double lookup(char *type, double t);
-double put(char *type, double t, double value);
+//double lookup(char *type, double t);
+//double put(char *type, double t, double value);
 
 main(argc,argv)
      int argc;
@@ -416,11 +416,14 @@ double sgn(x)
     return 0.0;
 }
 
-double getForce(double t) {
-  double force = lookup("Force", t);
+double getForce(int step) {
+  //double force = lookup("Force", step);
+  double force = forceValues[step];
   if(force == -1) {
+    double t = dt*step;
     force = t * exp(-t/tau);
-    put("Force", t, force);
+    forceValues[step] = force;
+    //put("Force", step, force);
   }
   return force;
 }
@@ -469,7 +472,7 @@ Cycle(learn_flag, step, sample_period)
   int upto = (step > last_steps ? last_steps: step);
   for(i = 1; i < upto ; i++) {
     t = i * dt;
-    sum += pushes[step - i] * getForce(t);
+    sum += pushes[step - i] * getForce(i);
     //sum += pushes[step - i] * t * exp(-t/tau);
   }
   push = fm*sum;
@@ -527,34 +530,45 @@ double srm(int t, double Q) {
   return PSPs + AHP;
 }
 
-double lookup(char *type, double step) {
-  double value;
+/*
+double lookup(char *type, int steps) {
+  double value, t;
   if(strcmp(type, "PSP") == 0) {
-    t = dt*(step - last_spike_z[i][k]);
-    return PSPValues[t];
+    //t = dt*(step - last_spike_z[i][k]);
+    t = dt * steps;
+    return PSPValues[steps];
   } else if (strcmp(type, "AHP")) {
-
+    //PSPValues[steps] = 
   }
 }
-
-double PSP(int steps) {
-  double psp = 0;
-
-  psp = lookup("PSP", t);
+*/
+// lookup table from step 0 to 199 to speed up computation
+double PSP(int step) {
+  //step %= 200;
+  double psp = PSPValues[step];
+  //psp = lookup("PSP", steps);
   if(psp == -1) {
+    double t = dt * step;
+    //t = dt*(step - last_spike_z[i][k]);
     psp = (dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-    put("PSP", t, psp); 
+    //put("PSP", t, psp); 
+    PSPValues[step] = psp;
   }
   //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 }
 
-double AHP(double t) {
-  double ahp = lookup("AHP", t);
+double AHP(int step) {
+  //step %= 200;
+  double ahp = AHPValues[step];
+  //double ahp = lookup("AHP", t);
   if(ahp == -1) {
+    double t = dt * step;
     ahp = R * exp(-t/gamma);
-    put("AHP", t, ahp);
+    AHPValues[step] = ahp;
+    //put("AHP", t, ahp);
   }
-  return R * exp(-t/gamma);
+  return ahp;
+  //return R * exp(-t/gamma);
 }
 
 /**********************************************************************/
