@@ -1,9 +1,11 @@
 /* 
-   v0.7.0 - 2/27/2015 @author Tae Seung Kang
+   v0.7.2 - 2/27/2015 @author Tae Seung Kang
    SRM with continuous force version
 
    Changelog
    - Network of Spike Response Model (SRM) neurons: at all layers (input, hidden, output)
+   - lookup table to reduce computation time: <time, force> or <time, membrane potential>  
+   - force computation time reduced: 30-50%
    - change sync error: rhat+=0.1 to rhat-=0.01
    - print the best results: cp latest.test best.test
    - mutex for sparse asnychronous fires 
@@ -22,7 +24,9 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
-   - lookup table to reduce computation time: <time, force> or <time, membrane potential>  
+   - encode the states into input spikes
+   - 
+   - optimization for speedup: too slow now
    - estimated remaining time
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
    - integrate all the past steps until learn fully
@@ -60,8 +64,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-//#define SRM
-#define SYNERR		0.001
+#define SRM
+//#define SYNERR		0.001
 //#define PRINT		  // print out the results
 #define SUPPRESS	100
 //#define IMPULSE	
@@ -113,7 +117,7 @@ int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[200];
-double last_spike_p[2], last_spike_x[5][200], last_spike_v[5][200], last_spike_z[5][200];
+double last_spike_p[2][200], last_spike_x[5][200], last_spike_v[5][200], last_spike_z[5][200];
 double PSPValues[200], AHPValues[200];
 float threshold = 0.03;
 
@@ -149,12 +153,26 @@ double srm(int time, double weight);
 //double lookup(char *type, double t);
 //double put(char *type, double t, double value);
 
+void init_last_spikes() {
+  int i, j;
+  for(i = 0;i < 200; i++) {
+    last_spike_p[0][i] = -1;
+    last_spike_p[1][i] = -1;
+    for(j = 0; j < 5; j++) {
+      last_spike_x[j][i] = -1;
+      last_spike_v[j][i] = -1;
+      last_spike_z[j][i] = -1;
+    }
+  }
+}
+
 void init_constant_values() {
-  int i = 0;
-  for(;i < 200; i++) {
+  int i, j;
+  for(i = 0;i < 200; i++) {
     forceValues[i] = -1;
     PSPValues[i] = -1;
     AHPValues[i] = -1;
+    init_last_spikes();
   }
 }
 
@@ -271,9 +289,9 @@ SetRandomWeights()
 /* If init_flag is zero, then calculate state of cart-pole system at time t+1
    by Euler's method, else set state of cart-pole system to random values.
 */
-NextState(init_flag, push)
-     int init_flag;
-     double push;
+NextState(int init_flag, double push, int step)
+     //int init_flag;
+     //double push;
 {
   register double pv, ca, pp, pa, common;
   double sin_pp, cos_pp;
@@ -286,7 +304,7 @@ NextState(init_flag, push)
       the_system_state.pole_vel = randomdef * 2 * max_pole_vel - max_pole_vel;
 
       start_state = 1;
-      SetInputValues();
+      SetInputValues(step);
       failure = 0;
     }
   else
@@ -319,14 +337,28 @@ NextState(init_flag, push)
 }
 
 /****************************************************************/
-// Normalize to [0, 1]
-SetInputValues()
+encode(double x) {
+  float tau_encode = 0.1;
+  return sin(x) * exp(-x/tau_encode);
+}
+
+// Normalize to [0, 1] and encode to spikes
+SetInputValues(int step)
 {
   x[0] = (the_system_state.cart_pos + max_cart_pos) / (2 * max_cart_pos);
   x[1] = (the_system_state.cart_vel + max_cart_vel) / (2 * max_cart_vel);
   x[2] = (the_system_state.pole_pos + max_pole_pos) / (2 * max_pole_pos);
   x[3] = (the_system_state.pole_vel + max_pole_vel) / (2 * max_pole_vel);
   x[4] = 0.5;
+  int i;
+  for(i = 0; i < 5; i ++) {
+    x[i] = encode(x[i]);
+    if(x[i] >= 0.3) {
+	last_spike_x[i][step%200] = step;
+	printf("x fires at step %d %d\n", step, step%200);
+    } else
+	last_spike_x[i][step%200] = -1;
+  }
 }
 
 /****************************************************************/
@@ -340,9 +372,10 @@ int Run(num_trials, sample_period)
 
   time(&start);
 
-  NextState(1, 0.0);
+  NextState(1, 0.0, 0);
   i = 0;   j = 0;
   avg_length = 0;
+  init_last_spikes();
 
     if ((datafile = fopen(datafilename,"w")) == NULL) {
       printf("Couldn't open %s\n",datafilename);
@@ -359,7 +392,7 @@ int Run(num_trials, sample_period)
       if (failure)
 	{
 	  i++;
-	  NextState(1, 0.0);
+	  NextState(1, 0.0, 0);
    	  max_length = (max_length < j ? j : max_length);
 	  if(max_length < j) {
 	    maxj = j; 
@@ -383,6 +416,7 @@ int Run(num_trials, sample_period)
       	    printf("Couldn't open %s\n",datafilename);
       	    return;
           }
+  	  init_last_spikes();
 	}
     }
    if(i >= num_trials) {
@@ -452,14 +486,24 @@ Cycle(learn_flag, step, sample_period)
   /* output: action */
   action(step);
 
+#ifdef SRM
+  if(1.0 <= p[0]) {
+    last_spike_p[0][step%200] = step;
+#else
   if(randomdef <= p[0]) {
+#endif
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
   } else {
     unusualness[0] = -p[0];
   }
 
+#ifdef SRM
+    if(1.0 <= p[1]) {
+      last_spike_p[1][step%200] = step;
+#else
     if(randomdef <= p[1]) { 
+#endif
       right = 1; rspikes ++;
       unusualness[1] = 1 - p[1];
     } else 
@@ -497,7 +541,7 @@ Cycle(learn_flag, step, sample_period)
   }
 
   /* Apply the push to the pole-cart */
-  NextState(0, push);
+  NextState(0, push, step);
 
   /* Calculate evaluation of new state. */
   eval();
@@ -540,9 +584,9 @@ double PSP(int step) {
   if(psp == -1) {
     double t = dt * step;
     //t = dt*(step - last_spike_z[i][k]);
-    psp = (dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-    //put("PSP", t, psp); 
+    psp = (1.0/dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
     PSPValues[step] = psp;
+//    printf("step %d psp %f\n", step, psp);
   }
   //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 }
@@ -589,26 +633,42 @@ void action(int step) {
       for (j = 0; j < 5; j++)
 	sum += d[i][j] * x[j];
       z[i] = 1.0 / (1.0 + exp(-sum));
+#ifdef SRM
+      if (z[i] >= 0.5) {
+	last_spike_z[i][step%200] = step;
+	//printf("last_spike_z fires at step%d %d\n", step, step%200);
+      }
+      else last_spike_z[i][step%200] = -1;
+#endif
     }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
     for(i = 0; i < 5; i++) 
 #ifdef SRM
 	// last spikes of neuron i at x and z
-	for(k = 0; k < 100; k ++) {
-	  tk = dt*(step - last_spike_z[i][k]);
-	  psp = PSP(step);
+	for(k = 0; k < 200; k ++) {
+	  //tk = dt*(step - last_spike_z[i][k]);
+	  if(last_spike_z[i][k] != -1) {
+	    psp = PSP(step - last_spike_z[i][k]);
+//	    printf("last_spike_z %d %d %d psp %f\n", step, i, k, psp);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	  sum += e[i][j]*10.0/psp;
-	  tk = dt*(step - last_spike_x[i][k]);
+	    sum += e[i][j]*10.0/psp;
+	  }
+	  //tk = dt*(step - last_spike_x[i][k]);
 	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	  sum += e[i][j]*10.0/psp;
+	  if(last_spike_x[i][k] != -1) {
+	    psp = PSP(step - last_spike_x[i][k]);
+	    sum += e[i][j]*10.0/psp;
+	  }
+	  if(last_spike_p[j][k] != -1) 
+    	    sum += AHP(step - last_spike_p[j][k]);
 	}
     // for PSPs
-    t = dt*(step - last_spike_p[j]);
+    //t = dt*(step - last_spike_p[j]);
     //p[j] = sum + R * exp(-t/gamma);
-    p[j] = sum + AHP(t);
+    p[j] = sum;
+    //p[j] = sum + AHP(step - last_spike_p[j]);
 #else
       sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
