@@ -168,9 +168,9 @@ void init_last_spikes() {
 
 void init_constant_values() {
   int i, j;
-  for(i = 0;i < 150; i++) {
+  for(i = 0;i < last_steps; i++) {
     forceValues[i] = -1;
-    if(i >= 100) continue;
+    //if(i >= 100) continue;
     PSPValues[i] = -1;
     AHPValues[i] = -1;
   }
