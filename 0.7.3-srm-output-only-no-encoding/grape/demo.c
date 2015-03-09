@@ -1,5 +1,5 @@
 /* 
-   v0.7.2 - 2/27/2015 @author Tae Seung Kang
+   v0.7.3 - 2/27/2015 @author Tae Seung Kang
    SRM with continuous force version
 
    Changelog
@@ -24,8 +24,8 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - just allocate large memory for last spikes? last_spike_p[i][3600000]
    - encode the states into input spikes
-   - 
    - optimization for speedup: too slow now
    - estimated remaining time
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
@@ -325,7 +325,7 @@ NextState(int init_flag, double push, int step)
       the_system_state.pole_pos += dt * the_system_state.pole_vel;
       the_system_state.pole_vel += dt * pa;
 
-      SetInputValues();
+      SetInputValues(step);
 
       start_state = 0;
       if ((fabs(the_system_state.cart_pos) > max_cart_pos) ||
@@ -352,10 +352,11 @@ SetInputValues(int step)
   x[4] = 0.5;
   int i;
   for(i = 0; i < 5; i ++) {
-    x[i] = encode(x[i]);
-    if(x[i] >= 0.3) {
+    //x[i] = encode(x[i]);
+    //if(x[i] >= 0.3) {
+    if(x[i] >= 0.5) {
 	last_spike_x[i][step%200] = step;
-	printf("x fires at step %d %d\n", step, step%200);
+//	printf("x fires at step %d %d\n", step, step%200);
     } else
 	last_spike_x[i][step%200] = -1;
   }
@@ -496,18 +497,21 @@ Cycle(learn_flag, step, sample_period)
     unusualness[0] = 1 - p[0];
   } else {
     unusualness[0] = -p[0];
+    last_spike_p[0][step%200] = -1;
   }
 
 #ifdef SRM
-    if(1.0 <= p[1]) {
-      last_spike_p[1][step%200] = step;
+  if(1.0 <= p[1]) {
+    last_spike_p[1][step%200] = step;
 #else
-    if(randomdef <= p[1]) { 
+  if(randomdef <= p[1]) { 
 #endif
-      right = 1; rspikes ++;
-      unusualness[1] = 1 - p[1];
-    } else 
-      unusualness[1] = -p[1];
+    right = 1; rspikes ++;
+    unusualness[1] = 1 - p[1];
+  } else {
+    unusualness[1] = -p[1];
+    last_spike_p[1][step%200] = -1;
+  }
 
   if(left == 1 && right == 0) {
     push = 1.0; 
@@ -578,9 +582,7 @@ Cycle(learn_flag, step, sample_period)
 /**********************************************************************/
 // lookup table from step 0 to 199 to speed up computation
 double PSP(int step) {
-  //step %= 200;
   double psp = PSPValues[step];
-  //psp = lookup("PSP", steps);
   if(psp == -1) {
     double t = dt * step;
     //t = dt*(step - last_spike_z[i][k]);
@@ -592,14 +594,11 @@ double PSP(int step) {
 }
 
 double AHP(int step) {
-  //step %= 200;
   double ahp = AHPValues[step];
-  //double ahp = lookup("AHP", t);
   if(ahp == -1) {
     double t = dt * step;
     ahp = R * exp(-t/gamma);
     AHPValues[step] = ahp;
-    //put("AHP", t, ahp);
   }
   return ahp;
   //return R * exp(-t/gamma);
@@ -655,8 +654,6 @@ void action(int step) {
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	    sum += e[i][j]*10.0/psp;
 	  }
-	  //tk = dt*(step - last_spike_x[i][k]);
-	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  if(last_spike_x[i][k] != -1) {
 	    psp = PSP(step - last_spike_x[i][k]);
 	    sum += e[i][j]*10.0/psp;
@@ -668,7 +665,6 @@ void action(int step) {
     //t = dt*(step - last_spike_p[j]);
     //p[j] = sum + R * exp(-t/gamma);
     p[j] = sum;
-    //p[j] = sum + AHP(step - last_spike_p[j]);
 #else
       sum += e[i][j] * x[i] + f[i][j] * z[i];
     p[j] = 1.0 / (1.0 + exp(-sum));
