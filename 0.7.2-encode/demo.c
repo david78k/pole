@@ -4,6 +4,7 @@
 
    Changelog
    - Network of Spike Response Model (SRM) neurons: at all layers (input, hidden, output)
+   - lookup table to reduce computation time: <time, force> or <time, membrane potential>  
    - force computation time reduced: 30-50%
    - change sync error: rhat+=0.1 to rhat-=0.01
    - print the best results: cp latest.test best.test
@@ -23,7 +24,9 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
-   - lookup table to reduce computation time: <time, force> or <time, membrane potential>  
+   - encode the states into input spikes
+   - 
+   - optimization for speedup: too slow now
    - estimated remaining time
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
    - integrate all the past steps until learn fully
@@ -334,7 +337,12 @@ NextState(init_flag, push)
 }
 
 /****************************************************************/
-// Normalize to [0, 1]
+encode(double x) {
+  float tau_encode = 0.1;
+  return sin(x) * exp(-x/tau_encode);
+}
+
+// Normalize to [0, 1] and encode to spikes
 SetInputValues()
 {
   x[0] = (the_system_state.cart_pos + max_cart_pos) / (2 * max_cart_pos);
@@ -342,6 +350,10 @@ SetInputValues()
   x[2] = (the_system_state.pole_pos + max_pole_pos) / (2 * max_pole_pos);
   x[3] = (the_system_state.pole_vel + max_pole_vel) / (2 * max_pole_vel);
   x[4] = 0.5;
+  int i;
+  for(i = 0; i < 5; i ++) {
+    x[i] = encode(x[i]);
+  }
 }
 
 /****************************************************************/
