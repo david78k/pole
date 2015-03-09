@@ -150,12 +150,9 @@ double srm(int time, double weight);
 //double lookup(char *type, double t);
 //double put(char *type, double t, double value);
 
-void init_constant_values() {
+void init_last_spikes() {
   int i, j;
   for(i = 0;i < 200; i++) {
-    forceValues[i] = -1;
-    PSPValues[i] = -1;
-    AHPValues[i] = -1;
     last_spike_p[0][i] = -1;
     last_spike_p[1][i] = -1;
     for(j = 0; j < 5; j++) {
@@ -163,6 +160,16 @@ void init_constant_values() {
       last_spike_v[j][i] = -1;
       last_spike_z[j][i] = -1;
     }
+  }
+}
+
+void init_constant_values() {
+  int i, j;
+  for(i = 0;i < 200; i++) {
+    forceValues[i] = -1;
+    PSPValues[i] = -1;
+    AHPValues[i] = -1;
+    init_last_spikes();
   }
 }
 
@@ -351,6 +358,7 @@ int Run(num_trials, sample_period)
   NextState(1, 0.0);
   i = 0;   j = 0;
   avg_length = 0;
+  init_last_spikes();
 
     if ((datafile = fopen(datafilename,"w")) == NULL) {
       printf("Couldn't open %s\n",datafilename);
@@ -391,6 +399,7 @@ int Run(num_trials, sample_period)
       	    printf("Couldn't open %s\n",datafilename);
       	    return;
           }
+  	  init_last_spikes();
 	}
     }
    if(i >= num_trials) {
@@ -559,8 +568,8 @@ double PSP(int step) {
     double t = dt * step;
     //t = dt*(step - last_spike_z[i][k]);
     psp = (1.0/dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-    //put("PSP", t, psp); 
     PSPValues[step] = psp;
+//    printf("step %d psp %f\n", step, psp);
   }
   //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 }
@@ -610,7 +619,7 @@ void action(int step) {
 #ifdef SRM
       if (z[i] >= 0.5) {
 	last_spike_z[i][step%200] = step;
-	printf("last_spike_z fires %d %d\n", step, step%200);
+	//printf("last_spike_z fires at step%d %d\n", step, step%200);
       }
       else last_spike_z[i][step%200] = -1;
 #endif
