@@ -16,6 +16,10 @@ demo:	demo.o
 plot:
 	$(CC) -o gnuplot gnuplot.c
 
+
+debug:
+	gdb --args ./demo n 36000 1 150 0.001 0.02 100 0 100 1 -
+
 rate:
 	#rm -rf rates
 	grep spikes/sec 180k-fm*.train 

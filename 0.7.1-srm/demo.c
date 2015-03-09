@@ -61,8 +61,8 @@
 #include <time.h>
 #include <stdlib.h>
 
-//#define SRM
-#define SYNERR		0.001
+#define SRM
+//#define SYNERR		0.001
 //#define PRINT		  // print out the results
 #define SUPPRESS	100
 //#define IMPULSE	
@@ -461,25 +461,25 @@ Cycle(learn_flag, step, sample_period)
   action(step);
 
 #ifdef SRM
-  if(0.1 <= p[0]) {
+  if(1.0 <= p[0]) {
+    last_spike_p[0][step%200] = step;
 #else
   if(randomdef <= p[0]) {
 #endif
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
-    last_spike_p[0][step%200] = 1;
   } else {
     unusualness[0] = -p[0];
   }
 
 #ifdef SRM
-  if(0.1 <= p[1]) {
+    if(1.0 <= p[1]) {
+      last_spike_p[1][step%200] = step;
 #else
     if(randomdef <= p[1]) { 
 #endif
       right = 1; rspikes ++;
       unusualness[1] = 1 - p[1];
-      last_spike_p[1][step%200] = 1;
     } else 
       unusualness[1] = -p[1];
 
@@ -558,7 +558,7 @@ double PSP(int step) {
   if(psp == -1) {
     double t = dt * step;
     //t = dt*(step - last_spike_z[i][k]);
-    psp = (dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+    psp = (1.0/dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
     //put("PSP", t, psp); 
     PSPValues[step] = psp;
   }
@@ -608,7 +608,10 @@ void action(int step) {
 	sum += d[i][j] * x[j];
       z[i] = 1.0 / (1.0 + exp(-sum));
 #ifdef SRM
-      if (z[i] >= 0.5) last_spike_z[i][step%200] = step;
+      if (z[i] >= 0.5) {
+	last_spike_z[i][step%200] = step;
+	printf("last_spike_z fires %d %d\n", step, step%200);
+      }
       else last_spike_z[i][step%200] = -1;
 #endif
     }
@@ -621,15 +624,16 @@ void action(int step) {
 	  //tk = dt*(step - last_spike_z[i][k]);
 	  if(last_spike_z[i][k] != -1) {
 	    psp = PSP(step - last_spike_z[i][k]);
+//	    printf("last_spike_z %d %d %d psp %f\n", step, i, k, psp);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	    sum += e[i][j]/psp;
+	    sum += e[i][j]*10.0/psp;
 	  }
 	  //tk = dt*(step - last_spike_x[i][k]);
 	  //sum += f[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  if(last_spike_x[i][k] != -1) {
 	    psp = PSP(step - last_spike_x[i][k]);
-	    sum += e[i][j]/psp;
+	    sum += e[i][j]*10.0/psp;
 	  }
 	  if(last_spike_p[j][k] != -1) 
     	    sum += AHP(step - last_spike_p[j][k]);
