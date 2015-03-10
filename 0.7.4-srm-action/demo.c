@@ -626,7 +626,7 @@ void action(int step) {
     {
       sum = 0.0;
       for (j = 0; j < 5; j++)
-	sum += d[i][j] * PSP(step - last_spike_x[i][k]);
+	sum += d[i][j] * PSP(step - last_spike_x[i][j]);
 	//sum += d[i][j] * x[j];
       //z[i] = 1.0 / (1.0 + exp(-sum));
       for(k = 0; k < 100; k ++) 
