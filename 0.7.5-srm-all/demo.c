@@ -66,7 +66,6 @@
 #define SRM
 //#define SYNERR		0.001
 //#define PRINT		  // print out the results
-#define SUPPRESS	100
 //#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
