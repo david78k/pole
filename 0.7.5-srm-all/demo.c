@@ -604,16 +604,25 @@ void eval() {
   int i, j;
   double sum;
   for(i = 0; i < 5; i++)
-    {
-      sum = 0.0;
-      for(j = 0; j < 5; j++)
-	  sum += a[i][j] * x[j];
-      y[i] = 1.0 / (1.0 + exp(-sum));
-    }
+  {
+    sum = 0.0;
+    for(j = 0; j < 5; j++)
+	  if(last_spike_x[i][k] != -1) 
+      sum += a[i][j] * PSP(step - last_spike_x[i][j]);
+     //  sum += a[i][j] * x[j];
+    for(k = 0; k < 100; k ++) 
+      sum += AHP(step - last_spike_x[i][k]);
+    //y[i] = 1.0 / (1.0 + exp(-sum));
+    y[i] = sum;
+  }
   for (j = 0; j< 2; j++) {
     sum = 0.0;
     for(i = 0; i < 5; i++)
-      sum += b[i][j] * x[i] + c[i][j] * y[i];
+	  if(last_spike_x[i][k] != -1) 
+      sum += b[i][j] * PSP(step - last_spike_x[i][j]);
+      //sum += b[i][j] * x[i] + c[i][j] * y[i];
+    for(k = 0; k < 100; k ++) 
+      sum += AHP(step - last_spike_v[i][k]);
     v[j] = sum;
   }
 }
@@ -629,6 +638,7 @@ void action(int step) {
 	//sum += d[i][j] * x[j];
       //z[i] = 1.0 / (1.0 + exp(-sum));
       for(k = 0; k < 100; k ++) 
+	  if(last_spike_x[i][k] != -1) 
 	sum += AHP(step - last_spike_x[i][k]);
       z[i] = sum;
       if (z[i] >= 1.0) {
