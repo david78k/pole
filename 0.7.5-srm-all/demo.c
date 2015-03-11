@@ -115,7 +115,7 @@ int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[200];
-double last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
+double last_spike_p[2][100], last_spike_x[5][100], last_spike_y[5][100], last_spike_v[5][100], last_spike_z[5][100];
 double PSPValues[100], AHPValues[100];
 float threshold = 0.03;
 
@@ -137,7 +137,7 @@ FILE *datafile, *bestfile;
 /*** Prototypes ***/
 float scale (float v, float vmin, float vmax, int devmin, int devmax);
 void init_args(int argc, char *argv[]);
-void eval();
+void eval(int step);
 void action(int step);
 void updateweights();
 void readweights(char *filename);
@@ -148,8 +148,6 @@ float sign(float x) { return (x < 0) ? -1. : 1.;}
 double srm(int time, double weight);
 //typedef enum {FORCE, PSP, AHP} strategy_t;
 //strategy_t my_strategy = IMMEDIATE;
-//double lookup(char *type, double t);
-//double put(char *type, double t, double value);
 
 void init_last_spikes() {
   int i, j;
@@ -158,6 +156,7 @@ void init_last_spikes() {
     last_spike_p[1][i] = -1;
     for(j = 0; j < 5; j++) {
       last_spike_x[j][i] = -1;
+      last_spike_y[j][i] = -1;
       last_spike_v[j][i] = -1;
       last_spike_z[j][i] = -1;
     }
@@ -481,7 +480,7 @@ Cycle(learn_flag, step, sample_period)
   float state[4];
 
   /* output: state evaluation */
-  eval();
+  eval(step);
 
   /* output: action */
   action(step);
@@ -541,7 +540,7 @@ Cycle(learn_flag, step, sample_period)
   NextState(0, push, step);
 
   /* Calculate evaluation of new state. */
-  eval();
+  eval(step);
 
   /* action evaluation */
   for(i = 0; i < 2; i++) {
@@ -588,7 +587,7 @@ double PSP(int step) {
 }
 
 double AHP(int step) {
-  if(step > 20) return 0;
+  //if(step > 20) return 0;
   double ahp = AHPValues[step];
   if(ahp == -1) {
     double t = dt * step;
@@ -600,30 +599,46 @@ double AHP(int step) {
 }
 
 /**********************************************************************/
-void eval() {
-  int i, j;
+void eval(int step) {
+  int i, j, k;
   double sum;
   for(i = 0; i < 5; i++)
   {
     sum = 0.0;
     for(j = 0; j < 5; j++)
-	  if(last_spike_x[i][k] != -1) 
-      sum += a[i][j] * PSP(step - last_spike_x[i][j]);
+      for(k = 0; k < 100; k ++) 
+        if(last_spike_x[j][k] != -1) 
+          sum += a[j][i] * PSP(step - last_spike_x[j][k]);
      //  sum += a[i][j] * x[j];
-    for(k = 0; k < 100; k ++) 
-      sum += AHP(step - last_spike_x[i][k]);
+    for(k = 0; k < 20; k ++) 
+      if(last_spike_y[i][k] != -1) 
+        sum += AHP(step - last_spike_y[i][k]);
     //y[i] = 1.0 / (1.0 + exp(-sum));
     y[i] = sum;
+    if(y[i] >= 1.0)
+      last_spike_y[i][step%100] = step;
+    else
+      last_spike_y[i][step%100] = -1;
   }
   for (j = 0; j< 2; j++) {
     sum = 0.0;
-    for(i = 0; i < 5; i++)
-	  if(last_spike_x[i][k] != -1) 
-      sum += b[i][j] * PSP(step - last_spike_x[i][j]);
-      //sum += b[i][j] * x[i] + c[i][j] * y[i];
-    for(k = 0; k < 100; k ++) 
-      sum += AHP(step - last_spike_v[i][k]);
+    for(i = 0; i < 5; i++) {
+      for(k = 0; k < 100; k ++) {
+        if(last_spike_x[i][k] != -1) 
+          sum += b[i][j] * PSP(step - last_spike_x[i][k]);
+        //sum += b[i][j] * x[i] + c[i][j] * y[i];
+        if(last_spike_y[i][k] != -1) 
+          sum += c[i][j] * PSP(step - last_spike_y[i][k]);
+      }
+    }
+    for(k = 0; k < 20; k ++) 
+      if(last_spike_v[j][k] != -1) 
+        sum += AHP(step - last_spike_v[j][k]);
     v[j] = sum;
+    if(v[j] >= 1.0)
+      last_spike_v[j][step%100] = step;
+    else
+      last_spike_v[j][step%100] = -1;
   }
 }
 
@@ -631,43 +646,47 @@ void action(int step) {
   int i, j, k;
   double sum, t, tk, psp;
   for(i = 0; i < 5; i++)
-    {
-      sum = 0.0;
-      for (j = 0; j < 5; j++)
-	sum += d[i][j] * PSP(step - last_spike_x[i][j]);
-	//sum += d[i][j] * x[j];
+  {
+    sum = 0.0;
+    for (j = 0; j < 5; j++) {
+      //sum += d[i][j] * x[j];
       //z[i] = 1.0 / (1.0 + exp(-sum));
       for(k = 0; k < 100; k ++) 
-	  if(last_spike_x[i][k] != -1) 
-	sum += AHP(step - last_spike_x[i][k]);
-      z[i] = sum;
-      if (z[i] >= 1.0) {
-	last_spike_z[i][step%100] = step;
-	//printf("last_spike_z fires at step%d %d\n", step, step%200);
-      }
-      else last_spike_z[i][step%100] = -1;
+	if(last_spike_x[j][k] != -1) 
+  	  sum += d[j][i] * PSP(step - last_spike_x[j][k]);
     }
+    for(k = 0; k < 20; k ++) 
+      if(last_spike_z[i][k] != -1) 
+        sum += AHP(step - last_spike_z[i][k]);
+    z[i] = sum;
+    if (z[i] >= 1.0) {
+      last_spike_z[i][step%100] = step;
+	//printf("last_spike_z fires at step%d %d\n", step, step%200);
+    }
+    else last_spike_z[i][step%100] = -1;
+  }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
-    for(i = 0; i < 5; i++) 
-	// last spikes of neuron i at x and z
-	for(k = 0; k < 100; k ++) {
-	  //tk = dt*(step - last_spike_z[i][k]);
-	  if(last_spike_z[i][k] != -1) {
+    // for PSPs
+    for(i = 0; i < 5; i++) {
+      // last spikes of neuron i at x and z
+      for(k = 0; k < 100; k ++) {
+      //tk = dt*(step - last_spike_z[i][k]);
+        if(last_spike_z[i][k] != -1) {
 //	    printf("last_spike_z %d %d %d psp %f\n", step, i, k, psp);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	    sum += e[i][j]*PSP(step - last_spike_z[i][k]);
-	  }
-	  if(last_spike_x[i][k] != -1) {
-	    sum += e[i][j]*PSP(step - last_spike_x[i][k]);
-	  }
-	  if(last_spike_p[j][k] != -1) 
-    	    sum += AHP(step - last_spike_p[j][k]);
+	  sum += e[i][j]*PSP(step - last_spike_z[i][k]);
 	}
-    // for PSPs
+	if(last_spike_x[i][k] != -1) 
+	  sum += e[i][j]*PSP(step - last_spike_x[i][k]);
+      }
+    }
     //t = dt*(step - last_spike_p[j]);
     //p[j] = sum + R * exp(-t/gamma);
+    for(k = 0; k < 20; k ++) 
+     if(last_spike_p[j][k] != -1) 
+      sum += AHP(step - last_spike_p[j][k]);
     p[j] = sum;
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
   //  p[j] = 1.0 / (1.0 + exp(-sum));
