@@ -1,0 +1,10 @@
+balanced 0 test_flag 0
+[1] Max 2271 (2271) steps (0.0006 hrs) 0.00:0.00 140 (140) sec
+[2] Max 2533 (2533) steps (0.0007 hrs) 0.00:0.00 278 (138) sec
+[3] Max 2533 (2127) steps (0.0006 hrs) 0.00:0.00 414 (136) sec
+[4] Max 2533 (2057) steps (0.0006 hrs) 0.00:0.00 556 (142) sec
+[5] Max 2533 (1991) steps (0.0006 hrs) 0.00:0.00 693 (137) sec
+[6] Ep635 balanced for 3000 steps (0.0008 hrs). 0.00:0.00 702 (9) sec
+Wrote current weights to latest.weights
+Total Elapsed time: 702 seconds
+Wrote current data to latest.train

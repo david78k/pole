@@ -117,7 +117,7 @@ double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2];
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[200];
 double last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
-double PSPValues[100], AHPValues[100];
+double PSPValues[100], AHPValues[20];
 float threshold = 0.03;
 
 /* experimental parameters */
@@ -169,8 +169,8 @@ void init_constant_values() {
   int i, j;
   for(i = 0;i < last_steps; i++) {
     forceValues[i] = -1;
-    //if(i >= 100) continue;
     PSPValues[i] = -1;
+    if(i >= 20) continue;
     AHPValues[i] = -1;
   }
   init_last_spikes();
@@ -589,7 +589,7 @@ double PSP(int step) {
 }
 
 double AHP(int step) {
-  if(step > 20) return 0;
+  //if(step > 20) return 0;
   double ahp = AHPValues[step];
   if(ahp == -1) {
     double t = dt * step;
@@ -625,12 +625,16 @@ void action(int step) {
   for(i = 0; i < 5; i++)
     {
       sum = 0.0;
-      for (j = 0; j < 5; j++)
-	sum += d[i][j] * PSP(step - last_spike_x[i][j]);
+      for (j = 0; j < 5; j++) {
 	//sum += d[i][j] * x[j];
       //z[i] = 1.0 / (1.0 + exp(-sum));
-      for(k = 0; k < 100; k ++) 
-	sum += AHP(step - last_spike_x[i][k]);
+        for(k = 0; k < 100; k ++) 
+  	  if(last_spike_x[j][k] != -1) 
+	    sum += d[j][i] * PSP(step - last_spike_x[j][k]);
+      }
+      for(k = 0; k < 20; k ++) 
+  	if(last_spike_z[i][k] != -1) 
+	  sum += AHP(step - last_spike_z[i][k]);
       z[i] = sum;
       if (z[i] >= 1.0) {
 	last_spike_z[i][step%100] = step;
@@ -643,22 +647,20 @@ void action(int step) {
     for(i = 0; i < 5; i++) 
 	// last spikes of neuron i at x and z
 	for(k = 0; k < 100; k ++) {
-	  //tk = dt*(step - last_spike_z[i][k]);
+	  if(last_spike_x[i][k] != -1)
+	    sum += e[i][j]*PSP(step - last_spike_x[i][k]);
 	  if(last_spike_z[i][k] != -1) {
 //	    printf("last_spike_z %d %d %d psp %f\n", step, i, k, psp);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	    sum += e[i][j]*PSP(step - last_spike_z[i][k]);
+	    sum += f[i][j]*PSP(step - last_spike_z[i][k]);
 	  }
-	  if(last_spike_x[i][k] != -1) {
-	    sum += e[i][j]*PSP(step - last_spike_x[i][k]);
-	  }
-	  if(last_spike_p[j][k] != -1) 
-    	    sum += AHP(step - last_spike_p[j][k]);
 	}
     // for PSPs
-    //t = dt*(step - last_spike_p[j]);
     //p[j] = sum + R * exp(-t/gamma);
+    for(k = 0; k < 20; k ++) 
+      if(last_spike_p[j][k] != -1) 
+        sum += AHP(step - last_spike_p[j][k]);
     p[j] = sum;
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
   //  p[j] = 1.0 / (1.0 + exp(-sum));
