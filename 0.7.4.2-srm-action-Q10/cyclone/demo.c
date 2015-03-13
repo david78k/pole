@@ -26,11 +26,13 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
-   - just allocate large memory for last spikes? last_spike_p[i][3600000]
-   - optimization for speedup: too slow now
+   - different Q values: Q*5
+   - double register for speedup: effective? size matters
+   - in-memory printout: hold output in memory until last file write
+   - just allocate large memory for last spikes? last_spike_p[i][3600000]: slow due to too many spikes?
+   - optimization for speedup: too slow now => due to high rate?
    - estimated remaining time
    - rollout: 10k, 50k, 100k, 150k, 180k milestones or midpoints
-   - integrate all the past steps until learn fully
    - recurrent outputs to affect each other: inhibit weights
    - test log files: 180k-fm50-r1.test1 .. test100, r1.train, r1.log, r1.weights
    - config file
@@ -67,7 +69,7 @@
 #define SRM
 //#define SYNERR		0.001
 //#define PRINT		  // print out the results
-#define SUPPRESS	100
+#define Q		5.0 // PSP synaptic weight amplifier
 //#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
@@ -103,7 +105,7 @@ float LR_IH = 0.7;
 float LR_HO = 0.07;
 float state[4] = {0.0, 0.0, 0.0, 0.0};
 
-float Q = 1.0;	// [-10, 10]. connection strength randomly chosen from [1.0, 10.0]
+//float Q = 1.0;	// [-10, 10]. connection strength randomly chosen from [1.0, 10.0]
 
 struct
 {
@@ -631,7 +633,7 @@ void action(int step) {
       //z[i] = 1.0 / (1.0 + exp(-sum));
         for(k = 0; k < 100; k ++) 
   	  if(last_spike_x[j][k] != -1) 
-	    sum += d[j][i] * 10.0 * PSP(step - last_spike_x[j][k]);
+	    sum += d[j][i] * Q * PSP(step - last_spike_x[j][k]);
       }
       for(k = 0; k < 20; k ++) 
   	if(last_spike_z[i][k] != -1) 
@@ -649,12 +651,12 @@ void action(int step) {
 	// last spikes of neuron i at x and z
 	for(k = 0; k < 100; k ++) {
 	  if(last_spike_x[i][k] != -1)
-	    sum += e[i][j]*10.0*PSP(step - last_spike_x[i][k]);
+	    sum += e[i][j]* Q *PSP(step - last_spike_x[i][k]);
 	  if(last_spike_z[i][k] != -1) {
 //	    printf("last_spike_z %d %d %d psp %f\n", step, i, k, psp);
 	  //sum += Q/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
 	  //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
-	    sum += f[i][j]*10.0*PSP(step - last_spike_z[i][k]);
+	    sum += f[i][j]* Q *PSP(step - last_spike_z[i][k]);
 	  }
 	}
     // for PSPs
