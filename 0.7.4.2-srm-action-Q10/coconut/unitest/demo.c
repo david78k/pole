@@ -370,6 +370,9 @@ SetInputValues(int step)
 int Run(num_trials, sample_period)
  int num_trials, sample_period;
 {
+  // maxj: among current trial
+  // max_length: among current run
+  // max_steps: among whole runs
   register int i, j, avg_length, max_length = 0, maxj, maxlspk, maxrspk;
   time_t start, stop; 
   lspikes = 0; rspikes = 0; //mutex = -1;
@@ -389,18 +392,21 @@ int Run(num_trials, sample_period)
   while (i < num_trials && j < TARGET_STEPS) /* one hour at .02s per step */
     {
       Cycle(1, j, sample_period);
-      if (DEBUG && j % 1000 == 0)
-        printf("Episode %d step %d rhat %.4f\n", i, j, r_hat);
+    //  if (DEBUG && j % 1000 == 0)
+    //    printf("Episode %d step %d rhat %.4f\n", i, j, r_hat);
       j++;
 
       if (failure)
 	{
-	  i++;
-	  NextState(1, 0.0, 0);
-   	  max_length = (max_length < j ? j : max_length);
-	  if(max_length < j) {
+   	  //max_length = (max_length < j ? j : max_length);
+	    printf("\t%d step %d max %d rate %f (L%d:R%d)\n", i, j, max_length, 
+		(lspikes + rspikes)/(dt*j), lspikes, rspikes);
+	  if(maxj < j) {
 	    maxj = j; 
 	    maxlspk = lspikes; maxrspk = rspikes;
+	    if(max_length < j) {
+	  	max_length = j;
+ 	    }
  	  }
 #ifdef PRINT
   if(max_steps < j) {
@@ -421,8 +427,11 @@ int Run(num_trials, sample_period)
       	    return;
           }
   	  init_last_spikes();
+	  i++;
+	  NextState(1, 0.0, 0);
 	}
-    }
+    } // end while loop for single trial
+
    if(i >= num_trials) {
      balanced = 0;
      max_steps = (max_steps < max_length ? max_length : max_steps);
@@ -623,7 +632,7 @@ void eval() {
 }
 
 void action(int step) {
-  printf("action step %d\n", step);
+  //printf("  action step %d\n", step);
   int i, j, k;
   double sum, t, tk, psp;
   for(i = 0; i < 5; i++)
@@ -669,7 +678,7 @@ void action(int step) {
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
   //  p[j] = 1.0 / (1.0 + exp(-sum));
   }
-  printf("  p[j] %f\n", p[j]);
+  //printf("  p[j] %f\n", p[j]);
 }
 
 /**********************************************************************/

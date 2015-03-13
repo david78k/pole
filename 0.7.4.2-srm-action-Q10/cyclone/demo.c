@@ -68,8 +68,8 @@
 
 #define SRM
 //#define SYNERR		0.001
-//#define PRINT		  // print out the results
-#define Q		5.0 // PSP synaptic weight amplifier
+#define PRINT		  // print out the results
+#define Q		2.0 // PSP synaptic weight amplifier
 //#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
