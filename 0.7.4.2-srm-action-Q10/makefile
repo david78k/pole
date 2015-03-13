@@ -18,7 +18,7 @@ plot:
 
 
 debug:
-	gdb --args ./demo n 36000 1 150 0.001 0.02 100 0 100 1 -
+	gdb --args ./demo n 36000 1 200 0.001 0.02 100 0 10000 1 -
 
 rate:
 	#rm -rf rates

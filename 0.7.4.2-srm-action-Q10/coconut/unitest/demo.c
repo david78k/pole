@@ -69,7 +69,7 @@
 #define SRM
 //#define SYNERR		0.001
 //#define PRINT		  // print out the results
-#define Q		5.0 // PSP synaptic weight amplifier
+#define Q		10.0 // PSP synaptic weight amplifier
 //#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
@@ -118,8 +118,8 @@ struct
 int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
-double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[200];
-double last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
+double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[100];
+int last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
 double PSPValues[100], AHPValues[20];
 float threshold = 0.03;
 
@@ -359,7 +359,7 @@ SetInputValues(int step)
     //if(x[i] >= 0.3) {
     if(x[i] >= 0.5) {
 	last_spike_x[i][step%100] = step;
-//	printf("x fires at step %d %d\n", step, step%200);
+	//printf("  x[%d] fires at step %d slot %d\n", i, step, step%200);
     } else
 	last_spike_x[i][step%100] = -1;
   }
@@ -500,6 +500,10 @@ Cycle(learn_flag, step, sample_period)
   action(step);
 
   if(1.0 <= p[0]) {
+    printf("  p[0] fires %d slot %d: ", step, step%100);
+    for(k = 0; k < 100; k++) 
+	printf("%d ", last_spike_p[0][k]);
+    printf("\n");
     last_spike_p[0][step%100] = step;
   //if(randomdef <= p[0]) {
     left = 1; lspikes ++;
@@ -510,6 +514,10 @@ Cycle(learn_flag, step, sample_period)
   }
 
   if(1.0 <= p[1]) {
+    printf("  p[1] fires %d slot %d: ", step, step%100);
+    for(k = 0; k < 100; k++) 
+	printf("%d ", last_spike_p[1][k]);
+    printf("\n");
     last_spike_p[1][step%100] = step;
   //if(randomdef <= p[1]) { 
     right = 1; rspikes ++;
@@ -641,25 +649,29 @@ void action(int step) {
       for (j = 0; j < 5; j++) {
 	//sum += d[i][j] * x[j];
       //z[i] = 1.0 / (1.0 + exp(-sum));
-        for(k = 0; k < 100; k ++) 
+        for(k = 1; k < 100; k ++) 
   	  if(last_spike_x[j][k] != -1) 
 	    sum += d[j][i] * Q * PSP(step - last_spike_x[j][k]);
       }
-      for(k = 0; k < 20; k ++) 
+      for(k = 1; k < 20; k ++) 
   	if(last_spike_z[i][k] != -1) 
 	  sum += AHP(step - last_spike_z[i][k]);
       z[i] = sum;
       if (z[i] >= 1.0) {
+	printf("  z[%d] fires at step %d slot %d: ", i, step, step%200);
+        for(k = 0; k < 100; k++) 
+	  printf("%d ", last_spike_z[i][k]);
+        printf("\n");
 	last_spike_z[i][step%100] = step;
-	//printf("last_spike_z fires at step%d %d\n", step, step%200);
       }
       else last_spike_z[i][step%100] = -1;
     }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
+    // for PSPs
     for(i = 0; i < 5; i++) 
 	// last spikes of neuron i at x and z
-	for(k = 0; k < 100; k ++) {
+	for(k = 1; k < 100; k ++) {
 	  if(last_spike_x[i][k] != -1)
 	    sum += e[i][j]* Q *PSP(step - last_spike_x[i][k]);
 	  if(last_spike_z[i][k] != -1) {
@@ -669,9 +681,8 @@ void action(int step) {
 	    sum += f[i][j]* Q *PSP(step - last_spike_z[i][k]);
 	  }
 	}
-    // for PSPs
     //p[j] = sum + R * exp(-t/gamma);
-    for(k = 0; k < 20; k ++) 
+    for(k = 1; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
     p[j] = sum;
