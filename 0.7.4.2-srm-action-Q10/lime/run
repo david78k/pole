@@ -4,8 +4,8 @@
 #echo "TRAINING WITH NO EXPERIENCE"
 #time ./demo n 400 20 - 0.1 0.05 1 0.5
 
-#max_steps=3600	# k
-max_steps=5	# k
+max_steps=3600	# k
+#max_steps=5	# k
 train=1
 run=1     # 0: not train, 1 or greater: train
 testrun=1 # 0: not test, 1 or greater: test
