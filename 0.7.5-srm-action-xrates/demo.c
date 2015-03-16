@@ -27,6 +27,7 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - omp parallel for
    - different Q values: Q*5
    - double register for speedup: effective? size matters
    - in-memory printout: hold output in memory until last file write
@@ -121,6 +122,8 @@ double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2];
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[100];
 int last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
+int xspikes[5], yspikes[5], zspikes[5], vspikes[5];
+int xspikes_old[5], yspikes_old[5], zspikes_old[5], vspikes_old[5];
 double PSPValues[100], AHPValues[20];
 float threshold = 0.03;
 
@@ -363,6 +366,7 @@ SetInputValues(int step)
 	//printf("  x[%d] fires at step %d slot %d\n", i, step, step%200);
     } else
 	last_spike_x[i][step%100] = -1;
+/*
     if(step%100 == 0) { 
       int j, xcount = 0; 
       double xrate;
@@ -373,6 +377,7 @@ SetInputValues(int step)
       xrate = xcount / 100.0;
       printf("xrate %f (%d)\n", xrate, xcount);
     }
+*/
   }
 }
 

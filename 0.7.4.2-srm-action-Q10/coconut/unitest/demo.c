@@ -362,6 +362,7 @@ SetInputValues(int step)
 	//printf("  x[%d] fires at step %d slot %d\n", i, step, step%200);
     } else
 	last_spike_x[i][step%100] = -1;
+/*
     if(step%100 == 0) { 
       int j, xcount = 0; 
       double xrate;
@@ -372,6 +373,7 @@ SetInputValues(int step)
       xrate = xcount / 100.0;
       printf("xrate %f (%d)\n", xrate, xcount);
     }
+*/
   }
 }
 
