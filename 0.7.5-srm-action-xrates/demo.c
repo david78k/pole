@@ -178,7 +178,7 @@ void init_constant_values() {
     forceValues[i] = -1;
     PSPValues[i] = -1;
     if(i >= 20) continue;
-    AHPValues[i] = -1;
+    AHPValues[i] = 1;
   }
   init_last_spikes();
 }
@@ -611,13 +611,20 @@ Cycle(learn_flag, step, sample_period)
 /**********************************************************************/
 // lookup table from step 0 to 99 to speed up computation
 double PSP(int step) {
+  if(step == 0) return 0;
   double psp = PSPValues[step];
   if(psp == -1) {
-    double t = dt * step;
+    double t = 1000 * dt * step;
     //t = dt*(step - last_spike_z[i][k]);
     psp = (1.0/dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
     PSPValues[step] = psp;
-    printf("  step %d psp %f t %f\n", step, psp, t);
+    //printf("  step %d psp %f t %f\n", step, psp, t);
+    printf("  step %d psp %f t %f (exp %lf %lf %f): ", step, psp, t, exp(-beta*dist*dist/t), -beta*dist*dist/t, dist*dist);
+    //printf("  step %d psp %f t %f %f %f %f: ", step, psp, t, 1.0/dist*sqrt(t), exp(-beta*dist*dist/t), exp(-t/tau_exc));
+    int i = 0;
+    for(;i < 100; i ++)
+	printf("%.2f ", PSPValues[i]);
+     printf("\n");
   }
   //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
   //usleep(1000);
@@ -625,13 +632,19 @@ double PSP(int step) {
 }
 
 double AHP(int step) {
+  //if(step == 0) return 0;
   //if(step > 20) return 0;
   double ahp = AHPValues[step];
-  if(ahp == -1) {
-    double t = dt * step;
+  if(ahp == 1) {
+    double t = 1000 * dt * step;
     ahp = R * exp(-t/gamma);
     AHPValues[step] = ahp;
-    printf("  step %d ahp %f t %f\n", step, ahp, t);
+    //printf("  step %d ahp %f t %f\n", step, ahp, t);
+    printf("  step %d ahp %f t %f: ", step, ahp, t);
+    int i = 0;
+    for(;i < 20; i ++)
+	printf("%.2f ", AHPValues[i]);
+     printf("\n");
   }
   return ahp;
   //return R * exp(-t/gamma);
@@ -672,10 +685,13 @@ void action(int step) {
 	    //printf(" x fired from z\n");
 	    }
       }
-      for(k = 1; k < 20; k ++) 
+      printf("PSPs %f\n", sum);
+      for(k = 0; k < 20; k ++) 
   	if(last_spike_z[i][k] != -1) 
 	  sum += AHP(step - last_spike_z[i][k]);
       z[i] = sum;
+      printf("z[%d] = %f\n", i, z[i]);
+      usleep(1000);
       if (z[i] >= 1.0) {
 	printf("  z[%d] fires at step %d slot %d: ", i, step, step%200);
 	last_spike_z[i][step%100] = step;
@@ -701,7 +717,7 @@ void action(int step) {
 	  }
 	}
     //p[j] = sum + R * exp(-t/gamma);
-    for(k = 1; k < 20; k ++) 
+    for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
     p[j] = sum;
