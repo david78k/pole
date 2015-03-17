@@ -414,8 +414,8 @@ int Run(num_trials, sample_period)
       if (failure)
 	{
    	  //max_length = (max_length < j ? j : max_length);
-	    printf("\t%d step %d max %d rate %f (L%d:R%d)\n", i, j, max_length, 
-		(lspikes + rspikes)/(dt*j), lspikes, rspikes);
+//	    printf("\t%d step %d max %d rate %f (L%d:R%d)\n", i, j, max_length, 
+//		(lspikes + rspikes)/(dt*j), lspikes, rspikes);
 	  if(maxj < j) {
 	    maxj = j; 
 	    maxlspk = lspikes; maxrspk = rspikes;
@@ -514,7 +514,7 @@ Cycle(learn_flag, step, sample_period)
   /* output: action */
   action(step);
 
-  if(1.0 <= p[0]) {
+  if(0.5 <= p[0]) {
 //    printf("  p[0] fires %d slot %d: ", step, step%100);
     last_spike_p[0][step%100] = step;
 /*
@@ -530,7 +530,7 @@ Cycle(learn_flag, step, sample_period)
     last_spike_p[0][step%100] = -1;
   }
 
-  if(1.0 <= p[1]) {
+  if(0.5 <= p[1]) {
   //  printf("  p[1] fires %d slot %d: ", step, step%100);
     last_spike_p[1][step%100] = step;
 /*
@@ -685,14 +685,22 @@ void action(int step) {
 	//sum += d[i][j] * x[j];
       //z[i] = 1.0 / (1.0 + exp(-sum));
 //	printf("d[j][i] %f ", d[j][i]);
-        for(k = 1; k < 100; k ++) 
+        for(k = 1; k < 100; k ++) {
   	  if(last_spike_x[j][k] != -1) {
+	    int _steps = step - last_spike_x[j][k];
 	    psp = PSP(step - last_spike_x[j][k]);
 	    //psp = d[j][i] * Q * PSP(step - last_spike_x[j][k]);
 	    //sum += d[j][i] * Q * PSP(step - last_spike_x[j][k]);
 	    sum += d[j][i] * Q * psp;
+/*
+	    if(sum > 1000 || sum < -1000 || psp > 5 || psp < -5 || isnan(d[j][i]) || isinf(d[j][i]) || isnan(psp) || isinf(psp)) {
+		printf("step %d PSPs %f PSP %f timesteps %d d[j][i] %f\n", step, sum, psp, _steps, d[j][i]);
+		//exit(1);
+	    }
 //	    printf("%f ", psp);
+*/
 	  }
+	}
       }
       psp = sum;
  //     printf("PSPs %f ", sum);
@@ -704,9 +712,11 @@ void action(int step) {
 	}
       }
       sum += ahp;
-      z[i] = sum/1000.0;
-      if(isnan(z[i])) {
-        printf("PSPs %f AHPs %f z[%d] = %f\n", psp, ahp, i, z[i]);
+      z[i] = 1.0 / (1.0 + exp(-sum));
+      //z[i] = sum/1000.0;
+/*
+      if(z[i] > 1000 || z[i] < -1000 || isnan(z[i]) || isinf(z[i])) {
+        printf("z[%d] = %f PSPs %f AHPs %f d[j][i] %f\n", i, z[i], psp, ahp, d[j][i]);
 	printf("AHPValues: ");
 	int _i;
     	for(_i = 0;_i < 20; _i ++)
@@ -720,12 +730,18 @@ void action(int step) {
 	    //sum += AHP(step - last_spike_z[i][k]);
 	  }
   	}
+	printf("PSPValues: ");
+    	for(_i = 0;_i < 100; _i ++)
+	  printf("%.2f ", PSPValues[_i]);
+        printf("\n");
+	printf("last_spike_z[i][k]: ");
         for(k = 0; k < 100; k++) 
 	  printf("%d ", last_spike_z[i][k]);
         printf("\n");
         //printf("\n");
 	exit(1);
       }
+*/
       //usleep(1000);
       if (z[i] >= 0.5) {
 	last_spike_z[i][step%100] = step;
@@ -757,9 +773,9 @@ void action(int step) {
     for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
-    p[j] = sum / 1000.0;
+    //p[j] = sum / 1000.0;
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
-  //  p[j] = 1.0 / (1.0 + exp(-sum));
+    p[j] = 1.0 / (1.0 + exp(-sum));
   }
   //printf("  p[j] %f\n", p[j]);
 }
