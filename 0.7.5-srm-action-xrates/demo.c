@@ -71,7 +71,8 @@
 #define SRM
 //#define SYNERR		0.001
 //#define PRINT		  // print out the results
-#define Q		1.0 // PSP synaptic weight amplifier
+#define Q		0.001 // PSP synaptic weight amplifier
+//#define Q		1.0 // PSP synaptic weight amplifier
 //#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
@@ -85,7 +86,8 @@
 #define dist		1.5	// [1.0, 2.0] 1.5 for excitatory, 1.0-1.2 for inhibitory
 #define tau_exc		20	// ms
 // AHP
-#define R		-1000	// for AHP
+#define R		-1.0	// for AHP
+//#define R		-1000	// originally 1000 for AHP
 #define gamma		1.2	// 1.2 msec. for AHP
 
 /* cart pole constants */
@@ -414,8 +416,8 @@ int Run(num_trials, sample_period)
       if (failure)
 	{
    	  //max_length = (max_length < j ? j : max_length);
-//	    printf("\t%d step %d max %d rate %f (L%d:R%d)\n", i, j, max_length, 
-//		(lspikes + rspikes)/(dt*j), lspikes, rspikes);
+	    printf("\t%d step %d max %d rate %f (L%d:R%d)\n", i, j, max_length, 
+		(lspikes + rspikes)/(dt*j), lspikes, rspikes);
 	  if(maxj < j) {
 	    maxj = j; 
 	    maxlspk = lspikes; maxrspk = rspikes;
@@ -516,6 +518,7 @@ Cycle(learn_flag, step, sample_period)
 
   if(0.5 <= p[0]) {
 //    printf("  p[0] fires %d slot %d: ", step, step%100);
+    //p[0] = 1.0 / (1.0 + exp(-sum));
     last_spike_p[0][step%100] = step;
 /*
     for(k = 0; k < 100; k++) 
@@ -692,13 +695,11 @@ void action(int step) {
 	    //psp = d[j][i] * Q * PSP(step - last_spike_x[j][k]);
 	    //sum += d[j][i] * Q * PSP(step - last_spike_x[j][k]);
 	    sum += d[j][i] * Q * psp;
-/*
 	    if(sum > 1000 || sum < -1000 || psp > 5 || psp < -5 || isnan(d[j][i]) || isinf(d[j][i]) || isnan(psp) || isinf(psp)) {
 		printf("step %d PSPs %f PSP %f timesteps %d d[j][i] %f\n", step, sum, psp, _steps, d[j][i]);
-		//exit(1);
+		exit(1);
 	    }
 //	    printf("%f ", psp);
-*/
 	  }
 	}
       }
@@ -712,8 +713,9 @@ void action(int step) {
 	}
       }
       sum += ahp;
-      z[i] = 1.0 / (1.0 + exp(-sum));
+      //z[i] = 1.0 / (1.0 + exp(-sum));
       //z[i] = sum/1000.0;
+      z[i] = sum/10.0;
 /*
       if(z[i] > 1000 || z[i] < -1000 || isnan(z[i]) || isinf(z[i])) {
         printf("z[%d] = %f PSPs %f AHPs %f d[j][i] %f\n", i, z[i], psp, ahp, d[j][i]);
@@ -757,7 +759,7 @@ void action(int step) {
   for (j = 0; j < 2; j++) {
     sum = 0.0;
     // for PSPs
-    for(i = 0; i < 5; i++) 
+    for(i = 0; i < 5; i++) {
 	// last spikes of neuron i at x and z
 	for(k = 1; k < 100; k ++) {
 	  if(last_spike_x[i][k] != -1)
@@ -769,13 +771,15 @@ void action(int step) {
 	    sum += f[i][j]* Q *PSP(step - last_spike_z[i][k]);
 	  }
 	}
+    }
     //p[j] = sum + R * exp(-t/gamma);
     for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
-    //p[j] = sum / 1000.0;
+    p[j] = sum/10.0;
+    //p[j] = sum / 20.0;
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
-    p[j] = 1.0 / (1.0 + exp(-sum));
+    //p[j] = 1.0 / (1.0 + exp(-sum));
   }
   //printf("  p[j] %f\n", p[j]);
 }
@@ -794,9 +798,9 @@ void updateweights() {
    	        a[i][j] += factor1 * x_old[j];
 	        d[i][j] += factor2 * x_old[j];
 		//if(d[i][j] != d[i][j]) 
-		if(isnan(d[i][j])) {
-		  printf("d[i][j] %f x_old[j] %f r_hat[k] %f z[i] %f unusualness[k] %f\n",
-			d[i][j], x_old[j], r_hat[k], z[i], unusualness[k]);
+		if(d[i][j] > 100 || d[i][j] < -100 || isnan(d[i][j])) {
+		  printf("d[i][j] %f x_old[j] %f r_hat[k] %f z[i] %f unusualness[k] %f p[0] %f p[1] %f\n",
+			d[i][j], x_old[j], r_hat[k], z[i], unusualness[k], p[0], p[1]);
 		  exit(1);
 		}
               }
