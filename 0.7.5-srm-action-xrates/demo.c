@@ -776,8 +776,8 @@ void action(int step) {
     for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
-    p[j] = sum/10.0;
-    //p[j] = sum / 20.0;
+    //p[j] = sum/10.0;
+    p[j] = sum / 20.0;
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
     //p[j] = 1.0 / (1.0 + exp(-sum));
   }
