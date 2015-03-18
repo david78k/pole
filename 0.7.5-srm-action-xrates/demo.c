@@ -127,7 +127,7 @@ int last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike
 //int xspikes[5], yspikes[5], zspikes[5], vspikes[5];
 //int xspikes_old[5], yspikes_old[5], zspikes_old[5], vspikes_old[5];
 double PSPValues[100], AHPValues[20];
-float threshold = 0.03;
+double threshold = 0.03, pmin = 1000, pmax = -1000, zmin = 1000, zmax = -1000;
 
 /* experimental parameters */
 float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
@@ -416,8 +416,10 @@ int Run(num_trials, sample_period)
       if (failure)
 	{
    	  //max_length = (max_length < j ? j : max_length);
-	    printf("\t%d step %d max %d rate %f (L%d:R%d)\n", i, j, max_length, 
-		(lspikes + rspikes)/(dt*j), lspikes, rspikes);
+	    printf("\t%d step %d max %d rate %f (L%d:R%d) %f %f %f %f\n", i, j, max_length, 
+		(lspikes + rspikes)/(dt*j), lspikes, rspikes
+		, pmin, pmax, zmin, zmax
+		);
 	  if(maxj < j) {
 	    maxj = j; 
 	    maxlspk = lspikes; maxrspk = rspikes;
@@ -516,7 +518,7 @@ Cycle(learn_flag, step, sample_period)
   /* output: action */
   action(step);
 
-  if(0.5 <= p[0]) {
+  if(p[0] >= 0.004) {
 //    printf("  p[0] fires %d slot %d: ", step, step%100);
     //p[0] = 1.0 / (1.0 + exp(-sum));
     last_spike_p[0][step%100] = step;
@@ -533,7 +535,7 @@ Cycle(learn_flag, step, sample_period)
     last_spike_p[0][step%100] = -1;
   }
 
-  if(0.5 <= p[1]) {
+  if(p[1] >= 0.004) {
   //  printf("  p[1] fires %d slot %d: ", step, step%100);
     last_spike_p[1][step%100] = step;
 /*
@@ -716,8 +718,9 @@ void action(int step) {
       //z[i] = 1.0 / (1.0 + exp(-sum));
       //z[i] = sum/1000.0;
       z[i] = sum/10.0;
-/*
-      if(z[i] > 1000 || z[i] < -1000 || isnan(z[i]) || isinf(z[i])) {
+      if(z[i] < zmin) zmin = z[i];
+      if(z[i] > zmax) zmax = z[i];
+      if(z[i] > 1.0 || z[i] < -1.0 || isnan(z[i]) || isinf(z[i])) {
         printf("z[%d] = %f PSPs %f AHPs %f d[j][i] %f\n", i, z[i], psp, ahp, d[j][i]);
 	printf("AHPValues: ");
 	int _i;
@@ -743,9 +746,8 @@ void action(int step) {
         //printf("\n");
 	exit(1);
       }
-*/
       //usleep(1000);
-      if (z[i] >= 0.5) {
+      if (z[i] >= 0.0007) {
 	last_spike_z[i][step%100] = step;
 /*
 	printf("  z[%d] fires at step %d slot %d: ", i, step, step%100);
@@ -772,14 +774,22 @@ void action(int step) {
 	  }
 	}
     }
+    psp = sum;
     //p[j] = sum + R * exp(-t/gamma);
     for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
-    //p[j] = sum/10.0;
-    p[j] = sum / 20.0;
+    //p[j] = sum/10.0; // break, not working
+    p[j] = sum / 50.0;
+    //p[j] = sum / 100.0; // too small
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
     //p[j] = 1.0 / (1.0 + exp(-sum));
+    if(p[j] < pmin) pmin = p[j];
+    if(p[j] > pmax) pmax = p[j];
+    if(p[j] < -1.0 || p[j] > 1.0) {
+	printf("  p[%d] %f PSPs %f AHPs %f\n", j, p[j], psp, sum - psp);
+	break;
+    }
   }
   //printf("  p[j] %f\n", p[j]);
 }
@@ -799,6 +809,7 @@ void updateweights() {
 	        d[i][j] += factor2 * x_old[j];
 		//if(d[i][j] != d[i][j]) 
 		if(d[i][j] > 100 || d[i][j] < -100 || isnan(d[i][j])) {
+		//if(isnan(d[i][j]) || isinf(d[i][j])) {
 		  printf("d[i][j] %f x_old[j] %f r_hat[k] %f z[i] %f unusualness[k] %f p[0] %f p[1] %f\n",
 			d[i][j], x_old[j], r_hat[k], z[i], unusualness[k], p[0], p[1]);
 		  exit(1);
