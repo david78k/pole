@@ -70,6 +70,7 @@
 #include <stdlib.h>
 
 #define SRM
+//#define PRINT_FAILURE
 //#define SYNERR		0.001
 //#define PRINT		  // print out the results
 #define Q		0.001 // PSP synaptic weight amplifier
@@ -417,8 +418,10 @@ int Run(num_trials, sample_period)
       if (failure)
 	{
    	  //max_length = (max_length < j ? j : max_length);
-//	    printf("\t%d step %d max %d rate %f (L%d:R%d) %f %f %f %f\n", i, j, max_length, 
-//		(lspikes + rspikes)/(dt*j), lspikes, rspikes, pmin, pmax, zmin, zmax);
+#ifdef PRINT_FAILURE
+	    printf("\t%d step %d max %d rate %f (L%d:R%d) %f %f %f %f\n", i, j, max_length, 
+		(lspikes + rspikes)/(dt*j), lspikes, rspikes, pmin, pmax, zmin, zmax);
+#endif
 	  if(maxj < j) {
 	    maxj = j; 
 	    maxlspk = lspikes; maxrspk = rspikes;
@@ -783,10 +786,11 @@ void action(int step) {
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
     //p[j] = sum/10.0; // break, not working
-    p[j] = sum / 50.0;
+    //p[j] = sum;
+    //p[j] = sum / 50.0;
     //p[j] = sum / 100.0; // too small
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
-    //p[j] = 1.0 / (1.0 + exp(-sum));
+    p[j] = 1.0 / (1.0 + exp(-sum));
     if(p[j] < pmin) pmin = p[j];
     if(p[j] > pmax) pmax = p[j];
 /*
