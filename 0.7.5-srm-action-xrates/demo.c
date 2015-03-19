@@ -416,10 +416,8 @@ int Run(num_trials, sample_period)
       if (failure)
 	{
    	  //max_length = (max_length < j ? j : max_length);
-	    printf("\t%d step %d max %d rate %f (L%d:R%d) %f %f %f %f\n", i, j, max_length, 
-		(lspikes + rspikes)/(dt*j), lspikes, rspikes
-		, pmin, pmax, zmin, zmax
-		);
+//	    printf("\t%d step %d max %d rate %f (L%d:R%d) %f %f %f %f\n", i, j, max_length, 
+//		(lspikes + rspikes)/(dt*j), lspikes, rspikes, pmin, pmax, zmin, zmax);
 	  if(maxj < j) {
 	    maxj = j; 
 	    maxlspk = lspikes; maxrspk = rspikes;

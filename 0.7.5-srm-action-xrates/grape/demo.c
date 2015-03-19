@@ -1,8 +1,9 @@
 /* 
-   v0.7.4.2 - 3/12/2015 @author Tae Seung Kang
+   v0.7.5 - 3/16/2015 @author Tae Seung Kang
    Spike Response Model (SRM) with continuous force version
 
    Changelog
+   - xrates: firing rates for x
    - Q*10: weight increased
    - action network of SRM)neurons: at all layers (input, hidden, output)
    - encode the states into input spikes: normalize to [0, 1] with threshold 0.5
@@ -26,6 +27,7 @@
    - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
+   - omp parallel for
    - different Q values: Q*5
    - double register for speedup: effective? size matters
    - in-memory printout: hold output in memory until last file write
@@ -69,7 +71,8 @@
 #define SRM
 //#define SYNERR		0.001
 //#define PRINT		  // print out the results
-#define Q		10.0 // PSP synaptic weight amplifier
+#define Q		0.001 // PSP synaptic weight amplifier
+//#define Q		1.0 // PSP synaptic weight amplifier
 //#define IMPULSE	
 #define randomdef       ((float) random() / (float)((1 << 31) - 1))
 
@@ -83,7 +86,8 @@
 #define dist		1.5	// [1.0, 2.0] 1.5 for excitatory, 1.0-1.2 for inhibitory
 #define tau_exc		20	// ms
 // AHP
-#define R		-1000	// for AHP
+#define R		-1.0	// for AHP
+//#define R		-1000	// originally 1000 for AHP
 #define gamma		1.2	// 1.2 msec. for AHP
 
 /* cart pole constants */
@@ -120,8 +124,10 @@ double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2];
 double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[100];
 int last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
+//int xspikes[5], yspikes[5], zspikes[5], vspikes[5];
+//int xspikes_old[5], yspikes_old[5], zspikes_old[5], vspikes_old[5];
 double PSPValues[100], AHPValues[20];
-float threshold = 0.03;
+double threshold = 0.03, pmin = 1000, pmax = -1000, zmin = 1000, zmax = -1000;
 
 /* experimental parameters */
 float fm = 50; 		// magnitude of force. 50 best, 25-100 good, 10 too slow
@@ -174,7 +180,7 @@ void init_constant_values() {
     forceValues[i] = -1;
     PSPValues[i] = -1;
     if(i >= 20) continue;
-    AHPValues[i] = -1;
+    AHPValues[i] = 1;
   }
   init_last_spikes();
 }
@@ -362,6 +368,7 @@ SetInputValues(int step)
 	//printf("  x[%d] fires at step %d slot %d\n", i, step, step%200);
     } else
 	last_spike_x[i][step%100] = -1;
+/*
     if(step%100 == 0) { 
       int j, xcount = 0; 
       double xrate;
@@ -369,10 +376,10 @@ SetInputValues(int step)
 	if(last_spike_x[i][j] != -1) xcount ++;
 	//xrate = (xcount - xoldcount)/100;
       }
-      xrate = xcount / 100.0;
-      printf("xrate %f (%d)\n", xrate, xcount);
+      xrate = xcount / (dt*100.0);
+      printf("xrate %f /sec, %f /setp (%d)\n", xrate, xcount / 100.0, xcount);
     }
-  }
+*/  }
 }
 
 /****************************************************************/
@@ -409,8 +416,8 @@ int Run(num_trials, sample_period)
       if (failure)
 	{
    	  //max_length = (max_length < j ? j : max_length);
-	    printf("\t%d step %d max %d rate %f (L%d:R%d)\n", i, j, max_length, 
-		(lspikes + rspikes)/(dt*j), lspikes, rspikes);
+//	    printf("\t%d step %d max %d rate %f (L%d:R%d) %f %f %f %f\n", i, j, max_length, 
+//		(lspikes + rspikes)/(dt*j), lspikes, rspikes, pmin, pmax, zmin, zmax);
 	  if(maxj < j) {
 	    maxj = j; 
 	    maxlspk = lspikes; maxrspk = rspikes;
@@ -509,12 +516,15 @@ Cycle(learn_flag, step, sample_period)
   /* output: action */
   action(step);
 
-  if(1.0 <= p[0]) {
-    printf("  p[0] fires %d slot %d: ", step, step%100);
+  if(p[0] >= 0.004) {
+//    printf("  p[0] fires %d slot %d: ", step, step%100);
+    //p[0] = 1.0 / (1.0 + exp(-sum));
+    last_spike_p[0][step%100] = step;
+/*
     for(k = 0; k < 100; k++) 
 	printf("%d ", last_spike_p[0][k]);
     printf("\n");
-    last_spike_p[0][step%100] = step;
+*/
   //if(randomdef <= p[0]) {
     left = 1; lspikes ++;
     unusualness[0] = 1 - p[0];
@@ -523,12 +533,14 @@ Cycle(learn_flag, step, sample_period)
     last_spike_p[0][step%100] = -1;
   }
 
-  if(1.0 <= p[1]) {
-    printf("  p[1] fires %d slot %d: ", step, step%100);
+  if(p[1] >= 0.004) {
+  //  printf("  p[1] fires %d slot %d: ", step, step%100);
+    last_spike_p[1][step%100] = step;
+/*
     for(k = 0; k < 100; k++) 
 	printf("%d ", last_spike_p[1][k]);
     printf("\n");
-    last_spike_p[1][step%100] = step;
+*/
   //if(randomdef <= p[1]) { 
     right = 1; rspikes ++;
     unusualness[1] = 1 - p[1];
@@ -606,25 +618,41 @@ Cycle(learn_flag, step, sample_period)
 /**********************************************************************/
 // lookup table from step 0 to 99 to speed up computation
 double PSP(int step) {
+  if(step == 0) return 0;
   double psp = PSPValues[step];
   if(psp == -1) {
-    double t = dt * step;
+    //double t = dt * step;
+    double t = 1000 * dt * step;
     //t = dt*(step - last_spike_z[i][k]);
     psp = (1.0/dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
     PSPValues[step] = psp;
-//    printf("step %d psp %f\n", step, psp);
-  }
+/*
+    printf("  step %d psp %f t %f (exp %lf %lf %f): ", step, psp, t, exp(-beta*dist*dist/t), -beta*dist*dist/t, dist*dist);
+    int i = 0;
+    for(;i < 100; i ++)
+	printf("%.2f ", PSPValues[i]);
+     printf("\n");
+*/  }
   //sum += e[i][j]*10.0/(dist*sqrt(t)) * exp(-beta*dist*dist/t) * exp(-t/tau_exc);
+//  usleep(1000);
   return psp;
 }
 
 double AHP(int step) {
-  //if(step > 20) return 0;
+  if(step >= 20) return 0;
   double ahp = AHPValues[step];
-  if(ahp == -1) {
-    double t = dt * step;
+  if(ahp == 1) {
+    //double t = dt * step;
+    double t = 1000 * dt * step;
     ahp = R * exp(-t/gamma);
     AHPValues[step] = ahp;
+/*
+    printf("  step %d ahp %f t %f: ", step, ahp, t);
+    int i = 0;
+    for(;i < 20; i ++)
+	printf("%.2f ", AHPValues[i]);
+     printf("\n");
+*/
   }
   return ahp;
   //return R * exp(-t/gamma);
@@ -652,34 +680,86 @@ void eval() {
 void action(int step) {
   //printf("  action step %d\n", step);
   int i, j, k;
-  double sum, t, tk, psp;
+  double sum, t, tk, psp, ahp;
   for(i = 0; i < 5; i++)
     {
       sum = 0.0;
       for (j = 0; j < 5; j++) {
 	//sum += d[i][j] * x[j];
       //z[i] = 1.0 / (1.0 + exp(-sum));
-        for(k = 1; k < 100; k ++) 
-  	  if(last_spike_x[j][k] != -1) 
-	    sum += d[j][i] * Q * PSP(step - last_spike_x[j][k]);
+//	printf("d[j][i] %f ", d[j][i]);
+        for(k = 1; k < 100; k ++) {
+  	  if(last_spike_x[j][k] != -1) {
+	    int _steps = step - last_spike_x[j][k];
+	    psp = PSP(step - last_spike_x[j][k]);
+	    //psp = d[j][i] * Q * PSP(step - last_spike_x[j][k]);
+	    //sum += d[j][i] * Q * PSP(step - last_spike_x[j][k]);
+	    sum += d[j][i] * Q * psp;
+	    if(sum > 1000 || sum < -1000 || psp > 5 || psp < -5 || isnan(d[j][i]) || isinf(d[j][i]) || isnan(psp) || isinf(psp)) {
+		printf("step %d PSPs %f PSP %f timesteps %d d[j][i] %f\n", step, sum, psp, _steps, d[j][i]);
+		exit(1);
+	    }
+//	    printf("%f ", psp);
+	  }
+	}
       }
-      for(k = 1; k < 20; k ++) 
-  	if(last_spike_z[i][k] != -1) 
-	  sum += AHP(step - last_spike_z[i][k]);
-      z[i] = sum;
-      if (z[i] >= 1.0) {
-	printf("  z[%d] fires at step %d slot %d: ", i, step, step%200);
+      psp = sum;
+ //     printf("PSPs %f ", sum);
+      ahp = 0;
+      for(k = 0; k < 20; k ++) {
+  	if(last_spike_z[i][k] != -1) {
+	  ahp += AHP(step - last_spike_z[i][k]);
+	  //sum += AHP(step - last_spike_z[i][k]);
+	}
+      }
+      sum += ahp;
+      //z[i] = 1.0 / (1.0 + exp(-sum));
+      //z[i] = sum/1000.0;
+      z[i] = sum/10.0;
+      if(z[i] < zmin) zmin = z[i];
+      if(z[i] > zmax) zmax = z[i];
+      if(z[i] > 1.0 || z[i] < -1.0 || isnan(z[i]) || isinf(z[i])) {
+        printf("z[%d] = %f PSPs %f AHPs %f d[j][i] %f\n", i, z[i], psp, ahp, d[j][i]);
+	printf("AHPValues: ");
+	int _i;
+    	for(_i = 0;_i < 20; _i ++)
+	  printf("%.2f ", AHPValues[_i]);
+        printf("\n");
+      	for(k = 0; k < 20; k ++) {
+  	  if(last_spike_z[i][k] != -1) {
+	    int _steps = step - last_spike_z[i][k];
+	    ahp = AHP(_steps);
+	    printf("ahp %f time %d step %d last_spike_z[i][k] %d\n", ahp, _steps, step, last_spike_z[i][k]);
+	    //sum += AHP(step - last_spike_z[i][k]);
+	  }
+  	}
+	printf("PSPValues: ");
+    	for(_i = 0;_i < 100; _i ++)
+	  printf("%.2f ", PSPValues[_i]);
+        printf("\n");
+	printf("last_spike_z[i][k]: ");
         for(k = 0; k < 100; k++) 
 	  printf("%d ", last_spike_z[i][k]);
         printf("\n");
+        //printf("\n");
+	exit(1);
+      }
+      //usleep(1000);
+      if (z[i] >= 0.0007) {
 	last_spike_z[i][step%100] = step;
+/*
+	printf("  z[%d] fires at step %d slot %d: ", i, step, step%100);
+        for(k = 0; k < 100; k++) 
+	  printf("%d ", last_spike_z[i][k]);
+        printf("\n");
+*/
       }
       else last_spike_z[i][step%100] = -1;
     }
   for (j = 0; j < 2; j++) {
     sum = 0.0;
     // for PSPs
-    for(i = 0; i < 5; i++) 
+    for(i = 0; i < 5; i++) {
 	// last spikes of neuron i at x and z
 	for(k = 1; k < 100; k ++) {
 	  if(last_spike_x[i][k] != -1)
@@ -691,13 +771,23 @@ void action(int step) {
 	    sum += f[i][j]* Q *PSP(step - last_spike_z[i][k]);
 	  }
 	}
+    }
+    psp = sum;
     //p[j] = sum + R * exp(-t/gamma);
-    for(k = 1; k < 20; k ++) 
+    for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
-    p[j] = sum;
+    //p[j] = sum/10.0; // break, not working
+    p[j] = sum / 50.0;
+    //p[j] = sum / 100.0; // too small
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
-  //  p[j] = 1.0 / (1.0 + exp(-sum));
+    //p[j] = 1.0 / (1.0 + exp(-sum));
+    if(p[j] < pmin) pmin = p[j];
+    if(p[j] > pmax) pmax = p[j];
+    if(p[j] < -1.0 || p[j] > 1.0) {
+	printf("  p[%d] %f PSPs %f AHPs %f\n", j, p[j], psp, sum - psp);
+	break;
+    }
   }
   //printf("  p[j] %f\n", p[j]);
 }
@@ -715,6 +805,13 @@ void updateweights() {
 	        factor2 = Rho_h * r_hat[k] * z[i] * (1.0 - z[i]) * sgn(f[i]) * unusualness[k];
    	        a[i][j] += factor1 * x_old[j];
 	        d[i][j] += factor2 * x_old[j];
+		//if(d[i][j] != d[i][j]) 
+		if(d[i][j] > 100 || d[i][j] < -100 || isnan(d[i][j])) {
+		//if(isnan(d[i][j]) || isinf(d[i][j])) {
+		  printf("d[i][j] %f x_old[j] %f r_hat[k] %f z[i] %f unusualness[k] %f p[0] %f p[1] %f\n",
+			d[i][j], x_old[j], r_hat[k], z[i], unusualness[k], p[0], p[1]);
+		  exit(1);
+		}
               }
 	    }
 	  for(j = 0; j < 2; j++) {
