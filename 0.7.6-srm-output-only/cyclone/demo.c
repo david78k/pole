@@ -800,6 +800,7 @@ void action(int step) {
     }
 */
   }
+	printf("%f\n", p[0]);
   //printf("  p[j] %f\n", p[j]);
 }
 
