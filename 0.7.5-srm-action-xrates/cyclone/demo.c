@@ -784,13 +784,13 @@ void action(int step) {
     //p[j] = 1.0 / (1.0 + exp(-sum));
     if(p[j] < pmin) pmin = p[j];
     if(p[j] > pmax) pmax = p[j];
-/*
-    if(p[j] < -1.0 || p[j] > 1.0) {
-	printf("  p[%d] %f PSPs %f AHPs %f\n", j, p[j], psp, sum - psp);
-	break;
-    }
-*/
+  //  if(p[j] < -1.0 || p[j] > 1.0) {
+	//printf("  p[%d] %f\n", j, p[j]);
+	//printf("  p[%d] %f PSPs %f AHPs %f\n", j, p[j], psp, sum - psp);
+//	break;
+  //  }
   }
+	printf("%f\n", p[0]);
   //printf("  p[j] %f\n", p[j]);
 }
 
