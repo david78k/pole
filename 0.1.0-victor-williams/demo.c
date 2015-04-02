@@ -1,8 +1,10 @@
 /* 
-   v0.7.7 - 3/30/2015 @author Tae Seung Kang
+   v0.1.0 - 4/2/2015 @author Tae Seung Kang
    Spike Response Model (SRM) with continuous force version
 
    Changelog
+   - Victor Williams and Kiyotoshi Matsuoka 1991 "Learning to Balance the Inverted Pendulum using Neural Networks"
+     two networks: controller and system identification like traditional control system
    - xrates: firing rates for x
    - Q*10: weight increased
    - action network of SRM)neurons: at all layers (input, hidden, output)

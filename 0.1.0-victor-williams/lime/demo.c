@@ -1,5 +1,5 @@
 /* 
-   v0.7.7 - 3/30/2015 @author Tae Seung Kang
+   v0.7.5 - 3/16/2015 @author Tae Seung Kang
    Spike Response Model (SRM) with continuous force version
 
    Changelog
@@ -158,6 +158,8 @@ float sign(float x) { return (x < 0) ? -1. : 1.;}
 double srm(int time, double weight);
 //typedef enum {FORCE, PSP, AHP} strategy_t;
 //strategy_t my_strategy = IMMEDIATE;
+//double lookup(char *type, double t);
+//double put(char *type, double t, double value);
 
 void init_last_spikes() {
   int i, j;
