@@ -122,7 +122,7 @@ struct
 
 int start_state, failure;
 double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
-double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
+double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2], p_d[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[100];
 int last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
 //int xspikes[5], yspikes[5], zspikes[5], vspikes[5];
@@ -544,8 +544,8 @@ Cycle(learn_flag, step, sample_period)
     right = 1; rspikes ++;
   //  unusualness[1] = 1 - p[1];
   } else {
-    unusualness[1] = -p[1];
-  //  last_spike_p[1][step%100] = -1;
+  //  unusualness[1] = -p[1];
+    last_spike_p[1][step%100] = -1;
   }
 
   if(left == 1 && right == 0) {
@@ -590,19 +590,21 @@ Cycle(learn_flag, step, sample_period)
    if(the_system_state.pole_pos > 0) {
      p_d[0] = 0;
      p_d[1] = 1;
-   } else if (the_system_state.pol_pos < 0) {
+   } else if (the_system_state.pole_pos < 0) {
      p_d[0] = 1;
      p_d[1] = 0;
    } else {
      p_d[0] = 0;
      p_d[1] = 0;
    }
-/*
+
     if (start_state)
       r_hat[i] = 0.0;
     else {
+	r_hat[i] = p_d[i] - p[i];
+/*
       if (failure) {
-        r_hat[i] = failure - v_old[i];
+       // r_hat[i] = failure - v_old[i];
      } else {
         r_hat[i] = failure + Gamma * v[i] - v_old[i];
      }
@@ -610,8 +612,8 @@ Cycle(learn_flag, step, sample_period)
      if(left == 1 && right == 1)
         r_hat[i] -= SYNERR;
 #endif
-     }
 */
+     }
   }
   /* report stats */
 #ifdef PRINT
@@ -790,12 +792,12 @@ void action(int step) {
     for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
-    p[j] = sum;
+    //p[j] = sum;
     //p[j] = sum/10.0; // break, not working
     //p[j] = sum / 50.0;
     //p[j] = sum / 100.0; // too small
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
-    //p[j] = 1.0 / (1.0 + exp(-sum));
+    p[j] = 1.0 / (1.0 + exp(-sum));
     //if(p[j] < pmin) pmin = p[j];
     //if(p[j] > pmax) pmax = p[j];
 /*
@@ -811,16 +813,18 @@ void action(int step) {
 /**********************************************************************/
 void updateweights() {
   int i, j, k;
-  double factor1, factor2;
+  double factor1, factor2, delta1, delta2;
       for(i = 0; i < 5; i++)
 	{
 	  for(j = 0; j < 5; j++)
 	    {
 	      for(k = 0; k < 2; k++) {
+		delta2 = r_hat[k] * z[i] * (1.0 - z[i]) * sgn(f[i]);
    	      //  factor1 = Beta_h * r_hat[k] * y_old[i] * (1.0 - y_old[i]) * sgn(c[i]);
-	        factor2 = Rho_h * r_hat[k] * z[i] * (1.0 - z[i]) * sgn(f[i]) * unusualness[k];
+	        //factor2 = Rho_h * r_hat[k] * z[i] * (1.0 - z[i]) * sgn(f[i]) * unusualness[k];
    	     //   a[i][j] += factor1 * x_old[j];
-	        d[i][j] += factor2 * x_old[j];
+	        //d[i][j] += factor2 * x_old[j];
+	        d[i][j] += Rho_h * delta2 * x_old[j];
 		//if(d[i][j] != d[i][j]) 
 		if(d[i][j] > 100 || d[i][j] < -100 || isnan(d[i][j])) {
 		//if(isnan(d[i][j]) || isinf(d[i][j])) {
