@@ -1,8 +1,9 @@
 /* 
-   v0.7.7 - 3/30/2015 @author Tae Seung Kang
+   v0.7.7 - 4/2/2015 @author Tae Seung Kang
    Spike Response Model (SRM) with continuous force version
 
    Changelog
+   - simple single net
    - xrates: firing rates for x
    - Q*10: weight increased
    - action network of SRM)neurons: at all layers (input, hidden, output)
@@ -509,7 +510,7 @@ Cycle(learn_flag, step, sample_period)
   float state[4];
 
   /* output: state evaluation */
-  eval();
+  //eval();
 
   /* output: action */
   action(step);
@@ -525,9 +526,9 @@ Cycle(learn_flag, step, sample_period)
 */
   //if(randomdef <= p[0]) {
     left = 1; lspikes ++;
-    unusualness[0] = 1 - p[0];
+ //   unusualness[0] = 1 - p[0];
   } else {
-    unusualness[0] = -p[0];
+  //  unusualness[0] = -p[0];
     last_spike_p[0][step%100] = -1;
   }
 
@@ -541,10 +542,10 @@ Cycle(learn_flag, step, sample_period)
 */
   //if(randomdef <= p[1]) { 
     right = 1; rspikes ++;
-    unusualness[1] = 1 - p[1];
+  //  unusualness[1] = 1 - p[1];
   } else {
     unusualness[1] = -p[1];
-    last_spike_p[1][step%100] = -1;
+  //  last_spike_p[1][step%100] = -1;
   }
 
   if(left == 1 && right == 0) {
@@ -582,10 +583,21 @@ Cycle(learn_flag, step, sample_period)
   NextState(0, push, step);
 
   /* Calculate evaluation of new state. */
-  eval();
+ // eval();
 
   /* action evaluation */
   for(i = 0; i < 2; i++) {
+   if(the_system_state.pole_pos > 0) {
+     p_d[0] = 0;
+     p_d[1] = 1;
+   } else if (the_system_state.pol_pos < 0) {
+     p_d[0] = 1;
+     p_d[1] = 0;
+   } else {
+     p_d[0] = 0;
+     p_d[1] = 0;
+   }
+/*
     if (start_state)
       r_hat[i] = 0.0;
     else {
@@ -599,6 +611,7 @@ Cycle(learn_flag, step, sample_period)
         r_hat[i] -= SYNERR;
 #endif
      }
+*/
   }
   /* report stats */
 #ifdef PRINT
@@ -713,9 +726,11 @@ void action(int step) {
       sum += ahp;
       //z[i] = 1.0 / (1.0 + exp(-sum));
       //z[i] = sum/1000.0;
-      z[i] = sum/10.0;
-      if(z[i] < zmin) zmin = z[i];
-      if(z[i] > zmax) zmax = z[i];
+      //z[i] = sum/10.0;
+      z[i] = sum;
+      //if(z[i] < zmin) zmin = z[i];
+      //if(z[i] > zmax) zmax = z[i];
+/*
       if(z[i] > 1.0 || z[i] < -1.0 || isnan(z[i]) || isinf(z[i])) {
         printf("z[%d] = %f PSPs %f AHPs %f d[j][i] %f\n", i, z[i], psp, ahp, d[j][i]);
 	printf("AHPValues: ");
@@ -742,7 +757,7 @@ void action(int step) {
         //printf("\n");
 	exit(1);
       }
-      //usleep(1000);
+*/      //usleep(1000);
       if (z[i] >= 0.0007) {
 	last_spike_z[i][step%100] = step;
 /*
@@ -775,13 +790,14 @@ void action(int step) {
     for(k = 0; k < 20; k ++) 
       if(last_spike_p[j][k] != -1) 
         sum += AHP(step - last_spike_p[j][k]);
+    p[j] = sum;
     //p[j] = sum/10.0; // break, not working
-    p[j] = sum / 50.0;
+    //p[j] = sum / 50.0;
     //p[j] = sum / 100.0; // too small
       //sum += e[i][j] * x[i] + f[i][j] * z[i];
     //p[j] = 1.0 / (1.0 + exp(-sum));
-    if(p[j] < pmin) pmin = p[j];
-    if(p[j] > pmax) pmax = p[j];
+    //if(p[j] < pmin) pmin = p[j];
+    //if(p[j] > pmax) pmax = p[j];
 /*
     if(p[j] < -1.0 || p[j] > 1.0) {
 	printf("  p[%d] %f PSPs %f AHPs %f\n", j, p[j], psp, sum - psp);
@@ -801,9 +817,9 @@ void updateweights() {
 	  for(j = 0; j < 5; j++)
 	    {
 	      for(k = 0; k < 2; k++) {
-   	        factor1 = Beta_h * r_hat[k] * y_old[i] * (1.0 - y_old[i]) * sgn(c[i]);
+   	      //  factor1 = Beta_h * r_hat[k] * y_old[i] * (1.0 - y_old[i]) * sgn(c[i]);
 	        factor2 = Rho_h * r_hat[k] * z[i] * (1.0 - z[i]) * sgn(f[i]) * unusualness[k];
-   	        a[i][j] += factor1 * x_old[j];
+   	     //   a[i][j] += factor1 * x_old[j];
 	        d[i][j] += factor2 * x_old[j];
 		//if(d[i][j] != d[i][j]) 
 		if(d[i][j] > 100 || d[i][j] < -100 || isnan(d[i][j])) {
@@ -815,10 +831,12 @@ void updateweights() {
               }
 	    }
 	  for(j = 0; j < 2; j++) {
-	    b[i][j] += Beta * r_hat[j] * x_old[i];
-	    c[i][j] += Beta * r_hat[j] * y_old[i];
-	    e[i][j] += Rho * r_hat[j] * unusualness[j] * x_old[i];
-	    f[i][j] += Rho * r_hat[j] * unusualness[j] * z[i];
+	    //b[i][j] += Beta * r_hat[j] * x_old[i];
+	    //c[i][j] += Beta * r_hat[j] * y_old[i];
+	    //e[i][j] += Rho * r_hat[j] * unusualness[j] * x_old[i];
+	   // f[i][j] += Rho * r_hat[j] * unusualness[j] * z[i];
+	    e[i][j] += Rho * r_hat[j] * x_old[i];
+	    f[i][j] += Rho * r_hat[j] * z[i];
   	  }
 	}
     }

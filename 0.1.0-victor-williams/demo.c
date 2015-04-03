@@ -26,7 +26,6 @@
      writes the data to a file latest.dat
    - 1output with 2actions(L/R) to 2outputs(L/R) with 3actions L/R/0
    - two outputs for both networks
-   - td-backprop code for evaluation network combined: multiple outputs
 
    Todo list
    - omp parallel for
@@ -122,8 +121,8 @@ struct
 } the_system_state;
 
 int start_state, failure;
-double a[5][5], b[5][2], c[5][2], d[5][5], e[5][2], f[5][2]; 
-double x[5], x_old[5], y[5], y_old[5], v[2], v_old[2], z[5], p[2];
+double a[5][5], b[5][2], c[5][4], d[5][5], e[5][2], f[5][2]; 
+double x[5], x_old[5], y[5], y_old[5], v[5], v_old[2], z[5], p[2];
 double r_hat[2], push, unusualness[2], fired[2], pushes[3600000], forceValues[100];
 int last_spike_p[2][100], last_spike_x[5][100], last_spike_v[5][100], last_spike_z[5][100];
 //int xspikes[5], yspikes[5], zspikes[5], vspikes[5];
@@ -285,9 +284,11 @@ SetRandomWeights()
 	  a[i][j] = randomdef * 0.2 - 0.1;
 	  d[i][j] = randomdef * 0.2 - 0.1;
 	}
-      for(j = 0; j < 2; j++) {
+      for(j = 0; j < 4; j++) {
         b[i][j] = randomdef * 0.2 - 0.1;
         c[i][j] = randomdef * 0.2 - 0.1;
+      }
+      for(j = 0; j < 2; j++) {
         e[i][j] = randomdef * 0.2 - 0.1;
         f[i][j] = randomdef * 0.2 - 0.1;
       }
@@ -882,20 +883,20 @@ void writeweights()
     return;
   }
 
-  for(i = 0; i < 5; i++)
+  for(i = 0; i < 6; i++)
       for(j = 0; j < 5; j++)
 	  fprintf(file," %f",a[i][j]);
 
   fprintf(file, "\n");
 
   for(i = 0; i < 5; i++)
-      for(j = 0; j < 2; j++)
+      for(j = 0; j < 4; j++)
        fprintf(file," %f",b[i][j]);
 
   fprintf(file, "\n");
 
   for(i = 0; i < 5; i++)
-      for(j = 0; j < 2; j++)
+      for(j = 0; j < 4; j++)
         fprintf(file," %f",c[i][j]);
 
   fprintf(file, "\n");
@@ -907,13 +908,13 @@ void writeweights()
   fprintf(file, "\n");
 
   for(i = 0; i < 5; i++)
-      for(j = 0; j < 2; j++)
+      for(j = 0; j < 1; j++)
         fprintf(file," %f",e[i][j]);
 
   fprintf(file, "\n");
 
   for(i = 0; i < 5; i++)
-      for(j = 0; j < 2; j++)
+      for(j = 0; j < 1; j++)
        fprintf(file," %f",f[i][j]);
 
   fclose(file);
